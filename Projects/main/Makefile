@@ -7,11 +7,11 @@
 SHELL := /bin/bash
 RM    := rm -rf
 MKDIR := mkdir -p
-BUILDROOT := /mnt/d/Users/achan/Projects/mpm/Build
+BUILDROOT := /mnt/d/Users/Emily/projects/mpm/Build
 BUILDDEFAULT := Release
 RELATIVEPATH := Projects/main
 BUILDDIR = $(BUILDROOT)/$(BUILDDEFAULT)/$(RELATIVEPATH)
-ROOTDIR := /mnt/d/Users/achan/Projects/mpm
+ROOTDIR := /mnt/d/Users/Emily/projects/mpm
 BUILDTYPES := Release MinSizeRel Debug Coverage RelWithDebInfo Quick
 OTHERGOALS := $(filter-out distclean $(BUILDTYPES),$(MAKECMDGOALS))
 
