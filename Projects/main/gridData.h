@@ -8,24 +8,26 @@ public:
 	GridData(vec3i dims);
 	GridData(const GridData &other); // copy
 
-	GridData(GridData &&other) : GridData(other.dims) {
+	GridData(GridData<T> &&other) : GridData(other.dims) {
 		swap(*this, other);
 	} // move
 
 	virtual ~GridData() {} // destructor
 
-	GridData &operator=(GridData other) {
+	GridData<T> &operator=(GridData<T> other) {
 		swap(*this, other);
 	} // copy assignment operator
 
-	virtual T operator()(T i, T j, T k) = 0;
+	virtual T operator()(T i, T j, T k) {
+		return this->mData[flat(i, j, k)];
+	}
 	virtual T operator()(vec3i idx) {
 		return (*this)(idx[0], idx[1], idx[2]);
 	}
 
 	virtual T interpolate(vec3 pos);
 
-	friend void swap(GridData &o1, GridData &o2) {
+	friend void swap(GridData<T> &o1, GridData<T> &o2) {
 		using std::swap;
 		swap(o1.mData, o2.mData);
 		swap(o1.dims, o2.dims);
@@ -44,10 +46,5 @@ class FaceData : public GridData<T> {
 	virtual T operator()(T i, T j, T k) {
 		return GridData<T>::mData[flat(std::ceil(i), std::ceil(j), std::ceil(k))];
 	}
-public:
-};
-
-template <typename T>
-class CenterData : public GridData<T> {
 public:
 };
