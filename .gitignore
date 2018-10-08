@@ -6,4 +6,6 @@ cmake-build-debug/
 *.jpg
 *.mp4
 *.avi
-build/
+*build*/
+Projects/main/main
+Projects/main/main_debug
