@@ -8,10 +8,13 @@
 #include <Eigen/SparseCore>
 
 #include <iostream>
-#include <cmath> 
+#include <cmath>
+#include <stdexcept>
 
 constexpr int dim = 3;
 using T = double;
+
+#define CELL_SIZE 1.f
 
 using vec2i = Eigen::Matrix<int, 2, 1>;
 using vec3i = Eigen::Matrix<int, 3, 1>;
