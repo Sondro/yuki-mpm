@@ -124,6 +124,28 @@ public:
  		return x + y * gridResolution + z * gridResolution * gridResolution;
  	}
 
+ 	// write particles to BGEO files
+ 	void saveSamples(std::string filename) {
+ 		Partio::ParticlesDataMutable *parts = Partio::create();
+ 		Partio::ParticleAttribute posH;
+
+ 		posH = parts->addAttribute("position", Partio::VECTOR, 3);
+
+ 		for (int i = 0; i < data.size(); ++i) {
+ 			if (data[i][0] == -1) {
+ 				continue;
+ 			}
+ 			int idx = parts->addParticle();
+ 			float *p = parts->dataWrite<float>(posH, idx);
+ 			for (int k = 0; k < 3; ++k) {
+ 				p[k] = data[i][k];
+ 			}
+ 		}
+
+ 		Partio::write(filename.c_str(), *parts);
+ 		parts->release();
+ 	}
+
  	T rng() { return ((T) std::rand() / (RAND_MAX)); }
 	std::vector<vec3> data;
 	std::vector<vec3> activeSamples;
