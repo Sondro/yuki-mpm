@@ -1,8 +1,10 @@
 #include "globals.h"
 #include "gridData.h"
+#include "sampler.h"
 int main(int argc, char **argv) {
-	std::cout << "Base MPM code" << std::endl;
-	std::cout << "Suck my dick" << std::endl;
-	std::cout << std::ceil(-0.5) << std::endl;
+	T n = 3;
+	T r = 0.5;
+	T k = 3;
+	Sampler<T> *s = new Sampler<T>(n, r, k);
 	return 0;
 }
