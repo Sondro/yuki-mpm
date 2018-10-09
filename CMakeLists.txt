@@ -24,7 +24,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   # using GCC
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Wextra -Wno-unused-parameter -Wcast-align -Wformat=2 -Winit-self -Wmissing-include-dirs -Woverloaded-virtual -Wredundant-decls -march=native -fno-math-errno")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
   set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-z,defs")
 
   # enable link time optimization
@@ -78,7 +78,7 @@ set(CMAKE_C_FLAGS_COVERAGE "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG} --covera
 set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "")
 set(CMAKE_SHARED_LINKER_FLAGS_COVERAGE "")
 
-set(CMAKE_CXX_FLAGS_QUICK "${CMAKE_CXX_FLAGS} -O1")
+set(CMAKE_CXX_FLAGS_QUICK "${CMAKE_CXX_FLAGS} -O0")
 set(CMAKE_EXE_LINKER_FLAGS_QUICK "")
 set(CMAKE_SHARED_LINKER_FLAGS_QUICK "")
 

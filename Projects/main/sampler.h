@@ -23,7 +23,8 @@ public:
 		vec3 x0(rng(), rng(), rng());
 
 		// add first sample to grid data
-        int flatIdx = gridIndex3Dto1D(x0);
+        int flatIdx = getSampleIndex(x0);
+        std::cout << flatIdx << std::endl;
 		data[flatIdx] = x0;
 
 		// initialize active list
@@ -35,23 +36,26 @@ public:
 			bool found = false;
 			for (int i = 0; i < k; ++i) {
 				vec3 sample = generateNeighborSample(xi, r);
-				bool valid = isFarEnough(sample, r);
-				if (valid) {
-					int newIdx = gridIndex3Dto1D(sample);
+				if (inGrid(sample) && isFarEnough(sample, r)) {
+					int newIdx = getSampleIndex(sample);
 					if (newIdx > 0 && newIdx < data.size()) {
                         found = true;
 						data[newIdx] = sample;
+                        printf("%f, %f, %f\n", sample[0], sample[1], sample[2]);
+                        numSamples++;
 						activeSamples.push_back(sample);
 					}
 				}
 			}
 			if (!found) {
-                std::cout << "removed element" << std::endl;
+                //std::cout << "removed element" << std::endl;
+                //std::cout << activeSamples.size() << std::endl;
 				activeSamples.erase(activeSamples.begin() + idx);
 			}
 		}
 
         std::cout << "finished generating samples" << std::endl;
+        std::cout <<  numSamples << std::endl;
  	}
 
  	vec3 generateNeighborSample(vec3 xi, T r) {
@@ -65,11 +69,24 @@ public:
  		return vec3(x, y, z);
  	}
 
+    int getSampleIndex(vec3 sample) {
+        vec3 gridPos = sample * inverseCellWidth;
+        vec3 gridIdx = floor(gridPos);
+
+        int flatIdx = gridIndex3Dto1D(gridIdx[0], gridIdx[1], gridIdx[2]);
+        return flatIdx;
+    }
+    bool inGrid(vec3 sample) {
+        for (int i = 0; i < 3; i++) {
+            if (sample[i] < 0 || sample[i] > 1) return false;
+        }
+        return true;
+    }
  	bool isFarEnough(vec3 sample, T r) {
+        int sampleIdx = getSampleIndex(sample);
  		vec3 gridPos = sample * inverseCellWidth;
  		vec3 gridIdx = floor(gridPos);
 
-		int flatIdx = gridIndex3Dto1D(gridIdx[0], gridIdx[1], gridIdx[2]);
  		for (int z = -1; z <= 1; z++) {
 			for (int y = -1; y <= 1; y++) {
 				for (int x = -1; x <= 1; x++) {
@@ -112,4 +129,5 @@ public:
 	std::vector<vec3> activeSamples;
 	T gridResolution;
 	T inverseCellWidth;
+    int numSamples = 0;
 };
