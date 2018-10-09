@@ -11,52 +11,232 @@ public:
 	 	limit of samples to choose before rejection 
 	 	in algorithm
 	 */
-	Sampler(T n, T r, T k) { 
-		inverseCellWidth = std::sqrt(n) / r;
-		gridResolution = std::floor(std::sqrt(n) / r);
-		// initialize 3D grid
-		data = std::vector<vec3>(gridResolution * gridResolution * gridResolution, vec3(-1, -1, -1));
-		
-		// initialize rng sampler
-		int seed = int(n * r * k);
-		std::srand(seed);
-		vec3 x0(rng(), rng(), rng());
-
-		// add first sample to grid data
-        int flatIdx = getSampleIndex(x0);
-        std::cout << flatIdx << std::endl;
-		data[flatIdx] = x0;
-
-		// initialize active list
-		activeSamples.push_back(x0);
-
-		while (activeSamples.size() > 0) {
-			int idx = rng() * activeSamples.size();
-			vec3 xi = activeSamples[idx];
-			bool found = false;
-			for (int i = 0; i < k; ++i) {
-				vec3 sample = generateNeighborSample(xi, r);
-				if (inGrid(sample) && isFarEnough(sample, r)) {
-					int newIdx = getSampleIndex(sample);
-					if (newIdx > 0 && newIdx < data.size()) {
-                        found = true;
-						data[newIdx] = sample;
-                        printf("%f, %f, %f\n", sample[0], sample[1], sample[2]);
-                        numSamples++;
-						activeSamples.push_back(sample);
-					}
-				}
-			}
-			if (!found) {
-                //std::cout << "removed element" << std::endl;
-                //std::cout << activeSamples.size() << std::endl;
-				activeSamples.erase(activeSamples.begin() + idx);
-			}
-		}
-
-        std::cout << "finished generating samples" << std::endl;
-        std::cout <<  numSamples << std::endl;
+	Sampler(int numTiles, T n, T r, T k) : numTiles(numTiles), n(n), r(r), k(k),
+                                           inverseCellWidth(std::sqrt(n) / r),
+                                           gridResolution(std::floor(std::sqrt(n) / r)) {
+        int seed = int(n * r * k);
+        std::srand(seed);
+        generateMasterTile();
+        for (int i = 0; i < numTiles; i++) {
+            tileSet.push_back(generatePoissonDistr(masterTile));
+        }
  	}
+    bool validPointSet(std::vector<vec3> allPoints) {
+        for (vec3 &p : allPoints) {
+            for (vec3 &o : allPoints) {
+                if (p != o) {
+                    if (p[0] = -1) continue;
+                    if (o[0] = -1) continue;
+                    if ((p - o).norm() < r) {
+                        std::cout << "Points too close!" << std::endl;
+                        std::cout << (p - o).norm() << std::endl;
+                        std::cout << r << std::endl;
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    bool testTileCubeDistribution() {
+        // tile each of the grids
+        Partio::ParticlesDataMutable *parts = Partio::create();
+        Partio::ParticleAttribute posH;
+
+        posH = parts->addAttribute("position", Partio::VECTOR, 3);
+        std::string filename = "multipleTiles.bgeo";
+        std::vector<vec3> allPoints;
+        for (int n = 0; n < numTiles; n++) {
+            std::vector<vec3> data = tileSet[n];
+            for (int i = 0; i < data.size(); ++i) {
+                if (data[i][0] == -1) {
+                    continue;
+                }
+
+                int idx = parts->addParticle();
+                float *p = parts->dataWrite<float>(posH, idx);
+                for (int k = 0; k < 3; ++k) {
+                    p[k] = data[i][k];
+                    switch (n) {
+                        case 0:
+                            break;
+                        case 1:
+                            if (k == 0) {
+                                p[k] = 1 + data[i][k];
+                            }
+                            break;
+                        case 2:
+                            if (k == 1) {
+                                p[k] = 1 + data[i][k];
+                            }
+                            break;
+                        case 3:
+                            if (k == 0 || k == 1) {
+                                p[k] = 1 + data[i][k];
+                            }
+                            break;
+                    }
+                }
+                allPoints.push_back(vec3(p[0], p[1], p[2]));
+            }
+
+        }
+
+        Partio::write(filename.c_str(), *parts);
+        parts->release();
+
+        return validPointSet(allPoints);
+    }
+    bool testTileRowDistribution() {
+        // tile each of the grids
+        Partio::ParticlesDataMutable *parts = Partio::create();
+        Partio::ParticleAttribute posH;
+
+        posH = parts->addAttribute("position", Partio::VECTOR, 3);
+        std::string filename = "multipleTiles.bgeo";
+        std::vector<vec3> allPoints;
+        for (int n = 0; n < numTiles; n++) {
+            std::vector<vec3> data = tileSet[n];
+            for (int i = 0; i < data.size(); ++i) {
+                if (data[i][0] == -1) {
+                    continue;
+                }
+
+                int idx = parts->addParticle();
+                float *p = parts->dataWrite<float>(posH, idx);
+                for (int k = 0; k < 3; ++k) {
+                    p[k] = k == 0? data[i][k] + n : data[i][k];
+                }
+                allPoints.push_back(vec3(p[0], p[1], p[2]));
+            }
+
+        }
+
+        Partio::write(filename.c_str(), *parts);
+        parts->release();
+
+        return validPointSet(allPoints);
+    }
+ 	std::vector<vec3> generatePoissonDistr() {
+        // initialize 3D grid
+        std::vector<vec3> gridData(gridResolution * gridResolution * gridResolution, vec3(-1, -1, -1));
+        std::vector<vec3> activeSamples;
+
+        // initialize rng sampler
+        vec3 x0(rng(), rng(), rng());
+
+        std::vector<vec3> initialSamples;
+        initialSamples.push_back(x0);
+        return generatePoissonDistr(initialSamples);
+ 	}
+
+    std::vector<vec3> generatePoissonDistr(std::vector<vec3> initialSamples) {
+        // initialize 3D grid
+        std::vector<vec3> gridData(gridResolution * gridResolution * gridResolution, vec3(-1, -1, -1));
+
+        // add initial samples to grid
+        for (vec3 sample : initialSamples) {
+            int idx = getSampleIndex(sample);
+            gridData[idx] = sample;
+        }
+
+        // add initial samples to active samples
+        std::vector<vec3> activeSamples(initialSamples);
+
+        while (activeSamples.size() > 0) {
+            int idx = rng() * activeSamples.size();
+            vec3 xi = activeSamples[idx];
+            bool found = false;
+            for (int i = 0; i < k; ++i) {
+                vec3 sample = generateNeighborSample(xi, r);
+                if (inGrid(sample) && isFarEnough(gridData, sample, r)) {
+                    int newIdx = getSampleIndex(sample);
+                    if (newIdx > 0 && newIdx < gridData.size()) {
+                        found = true;
+                        gridData[newIdx] = sample;
+                        //printf("%f, %f, %f\n", sample[0], sample[1], sample[2]);
+                        numSamples++;
+                        activeSamples.push_back(sample);
+                    }
+                }
+            }
+            if (!found) {
+                activeSamples.erase(activeSamples.begin() + idx);
+            }
+        }
+        return gridData;
+    }
+
+    void generateMasterTile() {
+        std::vector<vec3> gridData = generatePoissonDistr();
+        // create master tile by getting list of points closer to edge than disk radius
+        // test x boundaries
+        for (int y = 0; y < gridResolution; y++) {
+            for (int z = 0; z < gridResolution; z++) {
+                // test lower x bound
+                int idx = gridIndex3Dto1D(0, y, z);
+                vec3 pt = gridData[idx];
+                vec3 closestBoundaryPt(0, pt[1], pt[2]);
+                T distanceToBoundary = (closestBoundaryPt - pt).norm();
+                if (distanceToBoundary < r) {
+                    masterTile.push_back(pt);
+                }
+
+                // test upper x bound
+                idx = gridIndex3Dto1D(gridResolution - 1, y, z);
+                pt = gridData[idx];
+                closestBoundaryPt = vec3(1, pt[1], pt[2]);
+                distanceToBoundary = (closestBoundaryPt - pt).norm();
+                if (distanceToBoundary < r) {
+                    masterTile.push_back(pt);
+                }
+            }
+        }
+
+
+        // test y boundaries
+        for (int x = 0; x < gridResolution; x++) {
+            for (int z = 0; z < gridResolution; z++) {
+                int idx = gridIndex3Dto1D(x, 0, z);
+                vec3 pt = gridData[idx];
+                vec3 closestBoundaryPt(pt[0], 0, pt[2]);
+                T distanceToBoundary = (closestBoundaryPt - pt).norm();
+                if (distanceToBoundary < r) {
+                    masterTile.push_back(pt);
+                }
+
+                idx = gridIndex3Dto1D(x, gridResolution - 1, z);
+                pt = gridData[idx];
+                closestBoundaryPt = vec3(pt[0], 1, pt[2]);
+                distanceToBoundary = (closestBoundaryPt - pt).norm();
+                if (distanceToBoundary < r) {
+                    masterTile.push_back(pt);
+                }
+            }
+        }
+
+        // test z boundaries
+        for (int x = 0; x < gridResolution; x++) {
+            for (int y = 0; y < gridResolution; y++) {
+                int idx = gridIndex3Dto1D(x, y, 0);
+                vec3 pt = gridData[idx];
+                vec3 closestBoundaryPt(pt[0], pt[1], 0);
+                T distanceToBoundary = (closestBoundaryPt - pt).norm();
+                if (distanceToBoundary < r) {
+                    masterTile.push_back(pt);
+                }
+
+                idx = gridIndex3Dto1D(x, y, gridResolution - 1);
+                pt = gridData[idx];
+                closestBoundaryPt = vec3(pt[0], pt[1], 1);
+                distanceToBoundary = (closestBoundaryPt - pt).norm();
+                if (distanceToBoundary < r) {
+                    masterTile.push_back(pt);
+                }
+            }
+        }
+    }
 
  	vec3 generateNeighborSample(vec3 xi, T r) {
  		// randomly generate spherical coordinates
@@ -82,14 +262,15 @@ public:
         }
         return true;
     }
- 	bool isFarEnough(vec3 sample, T r) {
+ 	bool isFarEnough(std::vector<vec3> data, vec3 sample, T r) {
         int sampleIdx = getSampleIndex(sample);
  		vec3 gridPos = sample * inverseCellWidth;
  		vec3 gridIdx = floor(gridPos);
 
- 		for (int z = -1; z <= 1; z++) {
-			for (int y = -1; y <= 1; y++) {
-				for (int x = -1; x <= 1; x++) {
+        int search = 2;
+ 		for (int z = -search; z <= search; z++) {
+			for (int y = -search; y <= search; y++) {
+				for (int x = -search; x <= search; x++) {
 					vec3 offset(x, y, z);
 					vec3 neighborIdx = offset + gridIdx;
 					if (neighborIdx[0] < 0 || neighborIdx[0] >= gridResolution ||
@@ -124,8 +305,34 @@ public:
  		return x + y * gridResolution + z * gridResolution * gridResolution;
  	}
 
+ 	vec3 getTiled(vec3 p) {
+ 		vec3 v = p;
+ 		for (int i = 0; i < 3; i++) {
+ 			if (v[i] < 0) v[i] += 1;
+ 			else if(v[i] > 1) v[i] -= 1;
+ 		}
+ 		
+ 		return v;
+ 	}
+    void saveMasterTile(std::string filename) {
+        Partio::ParticlesDataMutable *parts = Partio::create();
+        Partio::ParticleAttribute posH;
+
+        posH = parts->addAttribute("position", Partio::VECTOR, 3);
+
+        for (int i = 0; i < masterTile.size(); ++i) {
+            int idx = parts->addParticle();
+            float *p = parts->dataWrite<float>(posH, idx);
+            for (int k = 0; k < 3; ++k) {
+                p[k] = masterTile[i][k];
+            }
+        }
+
+        Partio::write(filename.c_str(), *parts);
+        parts->release();
+    }
  	// write particles to BGEO files
- 	void saveSamples(std::string filename) {
+ 	void saveSamples(std::vector<vec3> data, std::string filename) {
  		Partio::ParticlesDataMutable *parts = Partio::create();
  		Partio::ParticleAttribute posH;
 
@@ -147,9 +354,12 @@ public:
  	}
 
  	T rng() { return ((T) std::rand() / (RAND_MAX)); }
-	std::vector<vec3> data;
-	std::vector<vec3> activeSamples;
+
+    std::vector<vec3> masterTile;
+    std::vector<std::vector<vec3>> tileSet;
 	T gridResolution;
 	T inverseCellWidth;
+    T n, r, k;
     int numSamples = 0;
+    int numTiles;
 };
