@@ -9,3 +9,4 @@ cmake-build-debug/
 *build*/
 Projects/main/main
 Projects/main/main_debug
+Makefile
