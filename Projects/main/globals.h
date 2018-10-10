@@ -26,21 +26,32 @@ using vecXD = Eigen::VectorXd;
 
 const T PI = 3.14159265358979323846264338327950288;
 
-double floorX(double a)
-{
-	return std::floor(a);
+double floorX(double a) {
+    return std::floor(a);
 }
 
 vec3 floor(vec3 v) {
-	vec3 ret = v;
-	ret.unaryExpr(&floorX);
+	vec3 ret = v.unaryExpr(&floorX);
 	return ret;
 }
 
 mat3 floor(mat3 m) {
-	mat3 ret = m;
-	ret.unaryExpr(&floorX);
+	mat3 ret = m.unaryExpr(&floorX);
+	return ret;
+}
+
+vec3 sign(vec3 v) {
+	vec3 ret;
+	ret[0] = v[0] < 0 ? -1 : 1;
+	ret[1] = v[1] < 0 ? -1 : 1;
+	ret[2] = v[2] < 0 ? -1 : 1;
+
+	ret[0] = v[0] == 0 ? 0 : ret[0];
+	ret[1] = v[1] == 0 ? 0 : ret[1];
+	ret[2] = v[2] == 0 ? 0 : ret[2];
 	return ret;
 }
 
 using PointList = std::vector<vec3>;
+
+T rng() { return ((T) std::rand() / (RAND_MAX)); }

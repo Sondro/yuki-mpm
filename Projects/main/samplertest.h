@@ -6,18 +6,15 @@
 template <typename T>
 class SamplerTest {
 public:
-    SamplerTest(Sampler<T> *s) : sampler(s) {
-    }
+    SamplerTest(Sampler<T> *s) : sampler(s) {}
 
-    /*
-     * naive pair-wise test between samples to see if they meet the
-     * minimum distance constraint in poisson disk sampling.
-     *
-     * param: std::vector<vec3> allPoints
-     *  grid data of samples
-     *
-     * return: true if valid point set (meets distance constraint)
-     */
+    bool testUnitPoissonCube() {
+        SamplerGrid<T> result = sampler->generatePoissonDistr();
+        PointList samples = result.getAllSamples();
+
+        sampler->saveSamples(samples, "fixedPoisson.bgeo");
+        return sampler->validPointSet(samples);
+    }
 
     bool testTileCubeDistribution() {
         // tile each of the grids
