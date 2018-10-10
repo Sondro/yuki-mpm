@@ -42,3 +42,5 @@ mat3 floor(mat3 m) {
 	ret.unaryExpr(&floorX);
 	return ret;
 }
+
+using PointList = std::vector<vec3>;
