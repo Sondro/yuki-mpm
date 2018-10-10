@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Partio.h>
-
+#include "voro++.hh"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
