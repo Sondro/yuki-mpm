@@ -12,6 +12,7 @@ file(GLOB MPM_SRC
 
 add_cispba_executable(main ${MPM_SRC})
 target_include_directories(main PUBLIC ${CISPBA_SOURCE_DIR}/tetgen/)
+target_include_directories(main PUBLIC ${CISPBA_SOURCE_DIR}/voro++/include)
 target_include_directories(main SYSTEM PUBLIC ${EIGEN3_INCLUDE_DIR})
 target_compile_options(main PUBLIC -DTETLIBRARY)
-target_link_libraries(main partio eigen ${CISPBA_SOURCE_DIR}/tetgen/libtet.a)
+target_link_libraries(main partio eigen ${CISPBA_SOURCE_DIR}/tetgen/libtet.a ${CISPBA_SOURCE_DIR}/voro++/libvoro++.a)
