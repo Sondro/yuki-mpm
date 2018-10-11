@@ -17,7 +17,7 @@ public:
     }
 
     bool testTileCubeDistribution() {
-        // tile each of the grids
+        std::cout << "Test tiling in x and y directions..." << std::endl;
         Partio::ParticlesDataMutable *parts = Partio::create();
         Partio::ParticleAttribute posH;
 
@@ -66,6 +66,7 @@ public:
         return sampler->validPointSet(allPoints);
     }
     bool testTileRowDistribution() {
+        std::cout << "Test tile row distribution..." << std::endl;
         Partio::ParticlesDataMutable *parts = Partio::create();
         Partio::ParticleAttribute posH;
 

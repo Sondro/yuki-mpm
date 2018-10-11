@@ -15,6 +15,7 @@ constexpr int dim = 3;
 using T = double;
 
 #define CELL_SIZE 1.f
+#define DEBUG 1
 
 using vec2i = Eigen::Matrix<int, 2, 1>;
 using vec3i = Eigen::Matrix<int, 3, 1>;

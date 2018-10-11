@@ -1,7 +1,7 @@
 #pragma once
 
 #include "globals.h"
-#define DEBUG 1
+
 #define GETX 1
 #define GETY 1
 #define GETZ 1
@@ -155,29 +155,61 @@ public:
         std::srand(seed);
 
         // master tile is the outer samples for each cube
-        generateMasterTile();
-        saveSamples(masterTile, "masterTile.bgeo");
+        //generateMasterTile();
+        //saveSamples(masterTile, "masterTile.bgeo");
+        SamplerGrid<T> cube = generatePoissonDistr();
+#if DEBUG
+        std::cout << "Testing cube distribution..." << std::endl;
+        PointList pList = cube.getAllSamples();
+        validPointSet(pList);
+#endif
 
-        // create poisson unit cubes
         for (int i = 0; i < numTiles; i++) {
-            SamplerGrid<T> cube = generatePoissonDistr(masterTile);
             tileSet.push_back(cube.getAllSamples());
         }
+//        // create poisson unit cubes
+//        for (int i = 0; i < numTiles; i++) {
+//#if DEBUG
+//            printf("Creating tile #%d by fillign master tile...\n", i);
+//            SamplerGrid<T> cube = generatePoissonDistr(masterTile);
+//
+//            std::cout << "Testing distribution..." << std::endl;
+//            PointList ptList = cube.getAllSamples();
+//            validPointSet(ptList);
+//
+//            std::cout << "Performing relaxation..." << std::endl;
+//            SamplerGrid<T> relaxed = lloydRelax(cube, relaxIterations);
+//
+//            std::cout << "Testing relaxed distribution..." << std::endl;
+//            ptList = relaxed.getAllSamples();
+//            validPointSet(ptList);
+//#else
+//            SamplerGrid<T> cube = generatePoissonDistr(masterTile);
+//            SamplerGrid<T> relaxed = lloydRelax(cube, relaxIterations);
+//#endif
+//            tileSet.push_back(relaxed.getAllSamples());
+//        }
 
 #if DEBUG
-        std::cout << "Performing Lloyd's relaxation algorithm." << std::endl;
+
 #endif
  	}
 
-    void lloydRelax(PointList &tile) {
+    SamplerGrid<T> lloydRelax(SamplerGrid<T> &gridData, int iterations) {
+
+        PointList tile = gridData.getAllSamples();
+        SamplerGrid<T> newGrid(gridData.gridResolution, gridData.cellWidth);
         using namespace voro;
+		// Golden ratio constants
+
         // Set up constants for the container geometry
-        const T x_min = -2, x_max = 2;
-        const T y_min = -2, y_max = 2;
-        const T z_min = -2, z_max = 2;
+        const T offset = 0.0;
+        const T x_min = -offset, x_max = 1.0 + offset;
+        const T y_min = -offset, y_max = 1.0 + offset;
+        const T z_min = -offset, z_max = 1.0 + offset;
         const int n_x = 6,n_y = 6, n_z = 6;
         const T cvol=(x_max-x_min)*(y_max-y_min)*(x_max-x_min);
-        int iterations = 20;
+        int numRelaxed = 0;
 
         // write the grid to bgeo before relaxing
         saveSamples(tile, "original.bgeo");
@@ -203,6 +235,9 @@ public:
                 con.put(i, x, y, z);
             }
 
+            // Output the particle positions in gnuplot format
+            con.draw_particles("random_points_p.gnu");
+
             // Sum up the volumes, and check that this matches the container volume
             T vvol=con.sum_cell_volumes();
             printf("Container volume : %g\n"
@@ -222,6 +257,9 @@ public:
             voronoicell_neighbor c;
             std::vector<vec3> newPoints;
             int cellCounter = 0;
+            int numFailures = 0;
+
+            newGrid = SamplerGrid<T>(gridData.gridResolution, gridData.cellWidth);
             // iterate over each particle in the container
             if (cl.start())
                 do {
@@ -283,20 +321,32 @@ public:
                         // compute centroid
                         vec3 centroid = R_all/ A_all;
 
-                        // move the site to the centroid of the cell
-                        newPoints.push_back(centroid);
+                        // move the site toward the centroid of the cell
+                        vec3 site = vec3(x, y, z);
+                        vec3 toCentroid = centroid - site;
+                        vec3 newPoint = site + 0.5 * toCentroid;
+                        if (isFarEnough(newGrid, newPoint, r)) {
+                            newGrid.addSample(newPoint);
+                            numRelaxed++;
+                        } else if(isFarEnough(newGrid, site, r)) {
+                            newGrid.addSample(site);
+                            numRelaxed++;
+                        }
+
                     } else {
-                        cl.pos(x, y, z);
-                        newPoints.push_back(vec3(x, y, z));
+                        numFailures++;
+                        //cl.pos(x, y, z);
+                        //newPoints.push_back(vec3(x, y, z));
                     }
                 } while (cl.inc());
 
-            // set the grid data to the centroid data
-            tile = newPoints;
-        }
+                // set the grid data to the centroid data
+                tile = newGrid.getAllSamples();
+            }
 
         // write the relaxed tile to bgeo
         saveSamples(tile, "relaxed.bgeo");
+        return newGrid;
     }
 
     /**
@@ -305,9 +355,6 @@ public:
      * @return a sampler grid data structure filled with poisson disk samples.
      */
  	SamplerGrid<T> generatePoissonDistr() {
-        // initialize 3D grid
-        std::vector<vec3> activeSamples;
-
         // initialize rng sampler
         vec3 x0(rng(), rng(), rng());
 
@@ -376,24 +423,29 @@ public:
      * @param allPoints
      * @return whether point set is valid poisson distribution.
      */
-    bool validPointSet(PointList allPoints) {
+    bool validPointSet(PointList &allPoints) {
         bool testPassed = true;
-        for (vec3 &p : allPoints) {
-            for (vec3 &o : allPoints) {
-                if (p != o) {
-                    // return false if the points are closer than the poisson
-                    // disk radius
-                    if ((p - o).norm() < r) {
-                        std::cout << "Points too close!" << std::endl;
-                        std::cout << "Distance: " << (p - o).norm() << std::endl;
-                        std::cout << "Poisson Radius: " << r << std::endl;
-
-                        testPassed = false;
-                    }
+        int numClosePairs = 0;
+        for (int i = 0; i < allPoints.size(); ++i) {
+            for (int j = i + 1; j < allPoints.size(); ++j) {
+                vec3 diff = allPoints[j] - allPoints[i];
+                if (diff.norm() - r < -0.001) {
+                    std::cout << "Points too close!" << std::endl;
+                    std::cout << "Distance: " << diff.norm() << std::endl;
+                    std::cout << "Poisson Radius: " << r << std::endl;
+                    printf("Pos 1: %f, %f, %f\n", allPoints[j][0], allPoints[j][1], allPoints[j][2]);
+                    printf("Pos 2: %f, %f, %f\n", allPoints[i][0], allPoints[i][1], allPoints[i][2]);
+                    printf("i: %d, j: %d\n", i, j);
+                    testPassed = false;
+                    numClosePairs += 1;
                 }
             }
         }
-        std::cout << "Points meet poisson disk radius constraint." << std::endl;
+
+        if (testPassed) std::cout << "Points meet poisson disk radius constraint." << std::endl;
+        else {
+            std::cout << "Number of close pairs: " << numClosePairs << std::endl;
+        }
         return testPassed;
     }
 
@@ -402,21 +454,30 @@ public:
      * square than the poisson disk radius.
      */
     void generateMasterTile() {
-        // generate an initial poisson distribution
-        SamplerGrid<T> gridData = generatePoissonDistr();
-        PointList ptList = gridData.getAllSamples();
 
-        // relax the initial distribution
-        lloydRelax(ptList);
 
 #ifdef DEBUG
-        std::cout << "Generating master tile..." << std::endl;
-        std::string result = validPointSet(ptList) ? "Valid distr" : "Invalid distr.";
-        std::cout << result << std::endl;
+        // generate an initial poisson distribution
+        SamplerGrid<T> initDistr = generatePoissonDistr();
+        PointList ptList = initDistr.getAllSamples();
+
+        std::cout << "Testing initial distribution for master tile..." << std::endl;
+        validPointSet(ptList);
+
+        // relax the initial distribution
+        SamplerGrid<T> gridData = lloydRelax(initDistr, relaxIterations);
+        ptList = gridData.getAllSamples();
+
+        std::cout << "Testing relaxed distribution for master tile..." << std::endl;
+        validPointSet(ptList);
+
+        std::cout << "Generating master tile by collecting edge points..." << std::endl;
+#else
+        SamplerGrid<T> initDistr = generatePoissonDistr();
+        SamplerGrid<T> gridData = lloydRelax(initDistr, relaxIterations);
 #endif
         // create master tile by getting list of points closer to edge than disk radius
         // test x boundaries
-#if GETX
         for (int y = 0; y < gridResolution; y++) {
             for (int z = 0; z < gridResolution; z++) {
                 // test lower x bounds
@@ -441,9 +502,7 @@ public:
 
             }
         }
-#endif
 
-#if GETY
         // test y boundaries
         for (int x = 0; x < gridResolution; x++) {
             for (int z = 0; z < gridResolution; z++) {
@@ -468,9 +527,7 @@ public:
                 }
             }
         }
-#endif
 
-#if GETZ
         // test z boundaries
         for (int x = 0; x < gridResolution; x++) {
             for (int y = 0; y < gridResolution; y++) {
@@ -495,7 +552,6 @@ public:
                 }
             }
         }
-#endif
     }
 
     /**
@@ -544,15 +600,44 @@ public:
  		for (int z = -search; z <= search; z++) {
 			for (int y = -search; y <= search; y++) {
 				for (int x = -search; x <= search; x++) {
+                    vec3 wrappedSample = sample;
 					vec3 offset(x, y, z);
 					vec3 neighborIdx = offset + gridIdx;
                     int i = neighborIdx[0];
                     int j = neighborIdx[1];
                     int k = neighborIdx[2];
-					if (i < 0 || i >= gridResolution ||
-						j < 0 || j >= gridResolution ||
-						k < 0 || k >= gridResolution)
-						continue;
+
+                    if (i >= gridResolution) {
+                        i = 0;
+                        wrappedSample[0] -= 1;
+                    }
+                    else if (i < 0) {
+                        i = gridResolution - 1;
+                        wrappedSample[0] += 1;
+                    }
+
+                    if (j >= gridResolution) {
+                        j = 0;
+                        wrappedSample[1] -= 1;
+                    }
+                    else if (j < 0) {
+                        j = gridResolution - 1;
+                        wrappedSample[1] += 1;
+                    }
+
+                    if (k >= gridResolution) {
+                        k = 0;
+                        wrappedSample[2] -= 1;
+                    }
+                    else if (k < 0) {
+                        k = gridResolution - 1;
+                        wrappedSample[2] += 1;
+                    }
+
+//					if (i < 0 || i >= gridResolution ||
+//						j < 0 || j >= gridResolution ||
+//						k < 0 || k >= gridResolution)
+//						continue;
 
                     // get the list of points in the neighbor cell
                     PointList cellPts = data(i, j, k);
@@ -560,7 +645,7 @@ public:
                     // test each point in the cell to see if its far enough
                     if (!cellPts.empty()) {
                         for (vec3 &neighborSample : cellPts) {
-                            vec3 v = neighborSample - sample;
+                            vec3 v = neighborSample - wrappedSample;
                             T distance = v.norm();
                             if (distance < r) return false;
                         }
@@ -617,4 +702,6 @@ public:
 
     // number of poisson disk distributions to tile
     int numTiles;
+
+    int relaxIterations = 4;
 };
