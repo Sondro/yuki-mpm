@@ -4,7 +4,7 @@
 
 int main(int argc, char **argv) {
 	T n = 3;
-	T r2 = 1.0 / 3.0;
+	T r2 = 1.0 / 4.0;
 	T k = 30;
     int numTiles = 2;
 	Sampler<T> *s = new Sampler<T>(numTiles, n, r2 / 2.0, k);

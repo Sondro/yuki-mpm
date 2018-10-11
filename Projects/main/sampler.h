@@ -171,10 +171,42 @@ public:
 
     void lloydRelax() {
         using namespace voro;
+		// Golden ratio constants
+		const double Phi=0.5*(1+sqrt(5.0));
+        class wall_initial_shape : public wall {
+            public:
+                wall_initial_shape(double Phi) {
+                    // Create a dodecahedron
+                    T width = 0.3;
+                    v.init(-width,width, -width, width, -width, width);
+                    v.plane(0,Phi,1);v.plane(0,-Phi,1);v.plane(0,Phi,-1);
+                    v.plane(0,-Phi,-1);v.plane(1,0,Phi);v.plane(-1,0,Phi);
+                    v.plane(1,0,-Phi);v.plane(-1,0,-Phi);v.plane(Phi,1,0);
+                    v.plane(-Phi,1,0);v.plane(Phi,-1,0);v.plane(-Phi,-1,0);
+                };
+
+                bool point_inside(double x,double y,double z) {return true;}
+
+                bool cut_cell(voronoicell &c,double x,double y,double z) {
+                    // Set the cell to be equal to the dodecahedron
+                    c=v;
+                    return true;
+                }
+
+                bool cut_cell(voronoicell_neighbor &c,double x,double y,double z) {
+                    // Set the cell to be equal to the dodecahedron
+                    c=v;
+                    return true;
+                }
+                
+            private:
+                voronoicell v;
+        };
+
         // Set up constants for the container geometry
-        const double x_min = 0, x_max = 1;
-        const double y_min = 0, y_max = 1;
-        const double z_min = 0, z_max = 1;
+        const double x_min = -.5, x_max = 1.5;
+        const double y_min = -.5, y_max = 1.5;
+        const double z_min = -.5, z_max = 1.5;
         const int n_x = 12,n_y = 12, n_z = 12;
         int iterations = 20;
 
@@ -194,6 +226,9 @@ public:
                               n_y, n_z,
                               false, false, false, 10);
 
+               // wall_initial_shape wis(Phi);
+                //con.add_wall(wis);
+
                 // add samples to the container
                 for (int i = 0; i < tile.size(); i++) {
                     T x, y, z;
@@ -203,6 +238,15 @@ public:
                     z = pt[2];
                     con.put(i, x, y, z);
                 }
+
+                con.put(tile.size() + 0, -0.5, -0.5, -0.5);
+                con.put(tile.size() + 1, -0.5, -0.5, 1.5);
+                con.put(tile.size() + 2, -0.5, 1.5, -0.5);
+                con.put(tile.size() + 3, -0.5, 1.5, 1.5);
+                con.put(tile.size() + 4, 1.5, -0.5, -0.5);
+                con.put(tile.size() + 5, 1.5, -0.5, 1.5);
+                con.put(tile.size() + 6, 1.5, 1.5, -0.5);
+                con.put(tile.size() + 7, 1.5, 1.5, 1.5);
 
                 // Output the particle positions in gnuplot format
                 con.draw_particles("random_points_p.gnu");
@@ -218,6 +262,7 @@ public:
                 std::vector<int> neigh;
                 voronoicell_neighbor c;
                 std::vector<vec3> newPoints;
+                int numFailures = 0;
 
                 // iterate over each particle in the container
                 if (cl.start())
@@ -279,17 +324,21 @@ public:
 
                             // compute centroid
                             vec3 centroid = R_all/ A_all;
+                            //c.centroid(x, y, z);
+                            centroid = vec3(x, y, z);
 
                             // move the site to the centroid of the cell
                             newPoints.push_back(centroid);
                         } else {
                             cl.pos(x, y, z);
                             newPoints.push_back(vec3(x, y, z));
+                            numFailures++;
                         }
                     } while (cl.inc());
 
                 // set the grid data to the centroid data
                 tile = newPoints;
+                //break;
             }
 
             // write the relaxed tile to bgeo
