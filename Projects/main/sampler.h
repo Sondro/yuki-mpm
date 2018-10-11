@@ -8,6 +8,7 @@
 
 template <typename T>
 
+
 /**
  * Uniform grid data structure to contain the samples.
  * @tparam T
@@ -166,136 +167,136 @@ public:
 #if DEBUG
         std::cout << "Performing Lloyd's relaxation algorithm." << std::endl;
 #endif
-        lloydRelax();
  	}
 
-    void lloydRelax() {
+    void lloydRelax(PointList &tile) {
         using namespace voro;
         // Set up constants for the container geometry
-        const double x_min = 0, x_max = 1;
-        const double y_min = 0, y_max = 1;
-        const double z_min = 0, z_max = 1;
-        const int n_x = 12,n_y = 12, n_z = 12;
+        const T x_min = -2, x_max = 2;
+        const T y_min = -2, y_max = 2;
+        const T z_min = -2, z_max = 2;
+        const int n_x = 6,n_y = 6, n_z = 6;
+        const T cvol=(x_max-x_min)*(y_max-y_min)*(x_max-x_min);
         int iterations = 20;
 
-        for (PointList &tile : tileSet) {
-            // write the grid to bgeo before relaxing
+        // write the grid to bgeo before relaxing
+        saveSamples(tile, "original.bgeo");
 
-            saveSamples(tile, "original.bgeo");
+        // for each iteration, move the samples to the centroid of
+        // the voronoi cell until the voronoi graph converges to a
+        // centroidal voronoi tesselation
+        for (int k = 0; k < iterations; k++) {
+            // create a container with the geometry given above, and make it
+            // non-periodic in each of the three coordinates. Allocate space for
+            // eight particles within each computational block
+            container con(x_min, x_max, y_min, y_max, z_min, z_max, n_x,
+                          n_y, n_z,
+                          false, false, false, 8);
 
-            // for each iteration, move the samples to the centroid of
-            // the voronoi cell until the voronoi graph converges to a
-            // centroidal voronoi tesselation
-            for (int k = 0; k < iterations; k++) {
-                // create a container with the geometry given above, and make it
-                // non-periodic in each of the three coordinates. Allocate space for
-                // eight particles within each computational block
-                container con(x_min, x_max, y_min, y_max, z_min, z_max, n_x,
-                              n_y, n_z,
-                              false, false, false, 10);
-
-                // add samples to the container
-                for (int i = 0; i < tile.size(); i++) {
-                    T x, y, z;
-                    vec3 pt = tile[i];
-                    x = pt[0];
-                    y = pt[1];
-                    z = pt[2];
-                    con.put(i, x, y, z);
-                }
-
-                // Output the particle positions in gnuplot format
-                con.draw_particles("random_points_p.gnu");
-
-                // Output the Voronoi cells in gnuplot format
-                con.draw_cells_gnuplot("random_points_v.gnu");
-
-
-
+            // add samples to the container
+            for (int i = 0; i < tile.size(); i++) {
                 T x, y, z;
-
-                c_loop_all cl(con);
-                std::vector<int> neigh;
-                voronoicell_neighbor c;
-                std::vector<vec3> newPoints;
-
-                // iterate over each particle in the container
-                if (cl.start())
-                    do {
-                        if (con.compute_cell(c, cl)) {
-                            cl.pos(x, y, z);
-
-                            std::vector<T> v;
-                            std::vector<int> f_vert;
-                            // Gather information about the computed Voronoi cell
-                            c.neighbors(neigh);
-
-                            // copy point data to v
-                            c.vertices(x, y, z, v);
-                            c.face_vertices(f_vert);
-
-                            int num_verts_per_face;
-
-                            vec3 R_all(0, 0, 0); T A_all = 0;
-
-                            // iterate over each face
-                            int i = 0;
-                            while (i < f_vert.size()) {
-                                // get number of points in this face
-                                num_verts_per_face = f_vert[i];
-                                i++;
-
-                                // write the vertices to the list of points
-                                std::vector<vec3> facePts;
-                                for (int j = 0; j < num_verts_per_face; j++) {
-                                    int idx = f_vert[i + j] * 3;
-                                    facePts.push_back(vec3(v[idx], v[idx + 1], v[idx + 2]));
-                                }
-
-                                // add this face's contribution to the
-                                // centroid
-                                for (int j = 1; j < num_verts_per_face - 1; j++) {
-                                    // triangulate this face
-                                    vec3 face(0, j, j + 1);
-                                    vec3 a = facePts[int(face[0])];
-                                    vec3 b = facePts[int(face[1])];
-                                    vec3 c = facePts[int(face[2])];
-
-                                    // compute the average of the triangle
-                                    vec3 r = (a + b + c) / 3;
-
-                                    // compute the area of the triangle
-                                    T A = (b.col(0) - a.col(0)).cross(c.col(0) - a.col(0)).norm();
-
-                                    // update the centroid computation
-                                    A_all += A;
-                                    R_all += A * r;
-                                }
-
-                                // update the area we're reading from in
-                                // the face indices list
-                                i += num_verts_per_face;
-                            }
-
-                            // compute centroid
-                            vec3 centroid = R_all/ A_all;
-
-                            // move the site to the centroid of the cell
-                            newPoints.push_back(centroid);
-                        } else {
-                            cl.pos(x, y, z);
-                            newPoints.push_back(vec3(x, y, z));
-                        }
-                    } while (cl.inc());
-
-                // set the grid data to the centroid data
-                tile = newPoints;
+                vec3 pt = tile[i];
+                x = pt[0];
+                y = pt[1];
+                z = pt[2];
+                con.put(i, x, y, z);
             }
 
-            // write the relaxed tile to bgeo
-            saveSamples(tile, "relaxed.bgeo");
-            break;
+            // Sum up the volumes, and check that this matches the container volume
+            T vvol=con.sum_cell_volumes();
+            printf("Container volume : %g\n"
+                   "Voronoi volume   : %g\n"
+                   "Difference       : %g\n",cvol,vvol,vvol-cvol);
+
+            // Output the particle positions in gnuplot format
+            if (k == 0) con.draw_particles("random_points_p.gnu");
+
+            // Output the Voronoi cells in gnuplot format
+            if (k == 0) con.draw_cells_gnuplot("random_points_v.gnu");
+
+            T x, y, z;
+
+            c_loop_all cl(con);
+            std::vector<int> neigh;
+            voronoicell_neighbor c;
+            std::vector<vec3> newPoints;
+            int cellCounter = 0;
+            // iterate over each particle in the container
+            if (cl.start())
+                do {
+                    if (con.compute_cell(c, cl)) {
+                        cl.pos(x, y, z);
+                        cellCounter++;
+                        std::vector<T> v;
+                        std::vector<int> f_vert;
+                        // Gather information about the computed Voronoi cell
+                        c.neighbors(neigh);
+
+                        // copy point data to v
+                        c.vertices(x, y, z, v);
+                        c.face_vertices(f_vert);
+
+                        int num_verts_per_face;
+
+                        vec3 R_all(0, 0, 0); T A_all = 0;
+
+                        // iterate over each face
+                        int i = 0;
+                        while (i < f_vert.size()) {
+                            // get number of points in this face
+                            num_verts_per_face = f_vert[i];
+                            i++;
+
+                            // write the vertices to the list of points
+                            std::vector<vec3> facePts;
+                            for (int j = 0; j < num_verts_per_face; j++) {
+                                int idx = f_vert[i + j] * 3;
+                                facePts.push_back(vec3(v[idx], v[idx + 1], v[idx + 2]));
+                            }
+
+                            // add this face's contribution to the
+                            // centroid
+                            for (int j = 1; j < num_verts_per_face - 1; j++) {
+                                // triangulate this face
+                                vec3 face(0, j, j + 1);
+                                vec3 a = facePts[int(face[0])];
+                                vec3 b = facePts[int(face[1])];
+                                vec3 c = facePts[int(face[2])];
+
+                                // compute the average of the triangle
+                                vec3 r = (a + b + c) / 3;
+
+                                // compute the area of the triangle
+                                T A = (b.col(0) - a.col(0)).cross(c.col(0) - a.col(0)).norm();
+
+                                // update the centroid computation
+                                A_all += A;
+                                R_all += A * r;
+                            }
+
+                            // update the area we're reading from in
+                            // the face indices list
+                            i += num_verts_per_face;
+                        }
+
+                        // compute centroid
+                        vec3 centroid = R_all/ A_all;
+
+                        // move the site to the centroid of the cell
+                        newPoints.push_back(centroid);
+                    } else {
+                        cl.pos(x, y, z);
+                        newPoints.push_back(vec3(x, y, z));
+                    }
+                } while (cl.inc());
+
+            // set the grid data to the centroid data
+            tile = newPoints;
         }
+
+        // write the relaxed tile to bgeo
+        saveSamples(tile, "relaxed.bgeo");
     }
 
     /**
@@ -404,6 +405,9 @@ public:
         // generate an initial poisson distribution
         SamplerGrid<T> gridData = generatePoissonDistr();
         PointList ptList = gridData.getAllSamples();
+
+        // relax the initial distribution
+        lloydRelax(ptList);
 
 #ifdef DEBUG
         std::cout << "Generating master tile..." << std::endl;
