@@ -9,10 +9,12 @@ public:
     SamplerTest(Sampler<T> *s) : sampler(s) {}
 
     bool testUnitPoissonCube() {
+        std::cout << "Testing poisson unit cube generation..." << std::endl;
         SamplerGrid<T> result = sampler->generatePoissonDistr();
         PointList samples = result.getAllSamples();
 
-        sampler->saveSamples(samples, "fixedPoisson.bgeo");
+        sampler->saveSamples(sampler->unitCube.getAllSamples(),
+                       "poisson_unit_cube_" + std::to_string(sampler->numSamples) + "samples.bgeo");
         return sampler->validPointSet(samples);
     }
 
@@ -22,10 +24,10 @@ public:
         Partio::ParticleAttribute posH;
 
         posH = parts->addAttribute("position", Partio::VECTOR, 3);
-        std::string filename = "multipleTiles.bgeo";
+        std::string filename = "tile_xy_test.bgeo";
         std::vector<vec3> allPoints;
-        for (int n = 0; n < sampler->numTiles; n++) {
-            std::vector<vec3> data = sampler->tileSet[n];
+        for (int n = 0; n < 4; n++) {
+            std::vector<vec3> data = sampler->unitCube.getAllSamples();
             for (int i = 0; i < data.size(); ++i) {
                 if (data[i][0] == -1) {
                     continue;
@@ -71,10 +73,10 @@ public:
         Partio::ParticleAttribute posH;
 
         posH = parts->addAttribute("position", Partio::VECTOR, 3);
-        std::string filename = "multipleTiles.bgeo";
+        std::string filename = "tile_row_test.bgeo";
         std::vector<vec3> allPoints;
-        for (int n = 0; n < sampler->numTiles; n++) {
-            std::vector<vec3> data = sampler->tileSet[n];
+        for (int n = 0; n < 3; n++) {
+            std::vector<vec3> data = sampler->unitCube.getAllSamples();
             for (int i = 0; i < data.size(); ++i) {
                 if (data[i][0] == -1) {
                     continue;
