@@ -281,6 +281,9 @@ public:
                     vec3 wrappedSample = sample;
 					vec3 offset(x, y, z);
 					vec3 neighborIdx = offset + gridIdx;
+
+                    // if the neighbor exceeds the bounds of the unit cube
+                    // wrap the neighbor index and the point we're testing
                     for (int n = 0; n < 3; n++) {
                         if (int(neighborIdx[n]) >= gridResolution) {
                             neighborIdx[n] = 0;
@@ -293,33 +296,6 @@ public:
                     int i = neighborIdx[0];
                     int j = neighborIdx[1];
                     int k = neighborIdx[2];
-//
-//                    if (i >= gridResolution) {
-//                        i = 0;
-//                        wrappedSample[0] -= 1;
-//                    }
-//                    else if (i < 0) {
-//                        i = gridResolution - 1;
-//                        wrappedSample[0] += 1;
-//                    }
-//
-//                    if (j >= gridResolution) {
-//                        j = 0;
-//                        wrappedSample[1] -= 1;
-//                    }
-//                    else if (j < 0) {
-//                        j = gridResolution - 1;
-//                        wrappedSample[1] += 1;
-//                    }
-//
-//                    if (k >= gridResolution) {
-//                        k = 0;
-//                        wrappedSample[2] -= 1;
-//                    }
-//                    else if (k < 0) {
-//                        k = gridResolution - 1;
-//                        wrappedSample[2] += 1;
-//                    }
 
                     // get the list of points in the neighbor cell
                     PointList cellPts = data(i, j, k);
