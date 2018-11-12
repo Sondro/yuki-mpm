@@ -69,12 +69,27 @@ public:
 		return (*this)(idx[0], idx[1], idx[2]);
 	}
 
+	/**
+	 * Return the value located in this grid at the world space
+	 * position pos. Uses cubic interpolation.
+	 */
+	virtual U interpolate(vec3 pos) {
+
+	}
+
+	/**
+	 * Swap two instances of GridData. Used for copy assignment operator
+	 * and move constructor.
+	 */
 	friend void swap(GridData<U> &o1, GridData<U> &o2) {
 		using std::swap;
 		swap(o1.mData, o2.mData);
 		swap(o1.dims, o2.dims);
 	}
 
+	/**
+	 * Converts three dimensional indices to a single index for flattened array.
+	 */
 	int flat(int x, int y, int z) const {
 		if (x < 0 || y < 0 || z < 0 ||
 			x > dims[0] - 1 ||
@@ -86,7 +101,9 @@ public:
 	}
 
 	/**
-	 * Convert world space coordinates pos to grid space coordinates
+	 * Convert world space coordinates pos to grid space coordinates. For example,
+	 * grid space coordinate 0.5 in x would indicate that the x world coordinate
+	 * is in the first cell, halfway to the second cell.
 	 */
 	vec3 worldToGrid(const vec3 &pos) {
 		if (pos[0] < 0 || pos[1] < 0 || pos[2] < 0 ||
@@ -100,7 +117,8 @@ public:
 
 	/**
 	 * Return the cell that a particular world space position is in.
-	 * This index will correspond to the lower x-y-z corner.
+	 * This index will correspond to the lower x-y-z corner, and is in
+	 * grid coordinates (i, j, k) where i, j, k = 1, ..., N
 	 */
 	vec3i cellOf(const vec3 &pos) {
 		vec3 gridSpace = worldToGrid(pos);
