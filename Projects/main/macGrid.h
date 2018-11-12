@@ -25,13 +25,13 @@ public:
             for (int i = -offset; i <= offset; i++) {
                 for (int j = -offset; j <= offset; j++) {
                     for (int k = -offset; k <= offset; k++) {
-                        vec3 nIdx = gridIdx + vec3(i, j, k);
-                        vec3 xi = nIdx * CELL_SIZE;
+                        vec3i nIdx = gridIdx + vec3i(i, j, k);
+                        vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                         T w = getWeight(xp, xi);
                         // transfer the masses
                         T m = w * p.mass;
-                        T p = w * p.mass * (p.vel + p.B * D_INV * (xi - xp));
-                        nodeMomentums(nIdx) += p;
+                        vec3 _p = w * p.mass * (p.vel + p.B * D_INV * (xi - xp));
+                        nodeMomentums(nIdx) += _p;
                         nodeMasses(nIdx) += m;
                     }
                 }
@@ -59,8 +59,8 @@ public:
             for (int i = -offset; i <= offset; i++) {
                 for (int j = -offset; j <= offset; j++) {
                     for (int k = -offset; k <= offset; k++) {
-                        vec3 nIdx = gridIdx + vec3(i, j, k);
-                        vec3 xi = nIdx * CELL_SIZE;
+                        vec3i nIdx = gridIdx + vec3i(i, j, k);
+                        vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                         vec3 wd = getWeightGradient(xp, xi);
                         nodeForces(nIdx) += -V0 * NeoHookeanDeltaPsi(p.F) * p.F.transpose() * wd;
                     }
@@ -74,7 +74,7 @@ public:
         for (int i = 0; i < dims[0]; i++) {
             for (int j = 0; j < dims[1]; j++) {
                 for (int k = 0; k < dims[2]; k++) {
-                    nodeVels(i, j, k) += dt * nodeMasses(i, j, k) * 9.8;
+                    nodeVels(i, j, k) += dt * nodeMasses(i, j, k) * vec3(9.8, 9.8, 9.8);
                     nodeVels(i, j, k) += dt * nodeForces(i, j, k) / nodeMasses(i, j, k);
                 }
             }
@@ -82,20 +82,20 @@ public:
     }
 
     void gridToParticle() {
-        for (const auto &p : particles) {
+        for (auto &p : particles) {
             vec3 xp = p.pos;
             vec3i gridIdx = nodeVels.cellOf(xp);
             int offset = 2;
 
             p.reset();
-            mat3 newF(0);
+            mat3 newF = mat3::Zero();
             for (int i = -offset; i <= offset; i++) {
                 for (int j = -offset; j <= offset; j++) {
                     for (int k = -offset; k <= offset; k++) {
-                        vec3 nIdx = gridIdx + vec3(i, j, k);
-                        vec3 xi = nIdx * CELL_SIZE;
+                        vec3i nIdx = gridIdx + vec3i(i, j, k);
+                        vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                         T w = getWeight(xp, xi);
-                        T v = nodeMomentums(nIdx) / nodeMasses(nIdx);
+                        vec3 v = nodeMomentums(nIdx) / nodeMasses(nIdx);
                         newF += v * getWeightGradient(xp, xi).transpose();
                         p.vel += w * v;
                         p.B += w * v * (xi - xp).transpose();
@@ -108,8 +108,8 @@ public:
     }
 
     void advectParticles() {
-        for (const auto &p : particles) {
-            p.pos += dt * p.vel;
+        for (auto &p : particles) {
+            p.pos += p.vel * dt;
         }
     }
 
@@ -120,11 +120,11 @@ public:
 
         posH = parts->addAttribute("position", Partio::VECTOR, 3);
 
-        for (int i = 0; i < particles.size(); ++i) {
+        for (unsigned int i = 0; i < particles.size(); ++i) {
             int idx = parts->addParticle();
             float *p = parts->dataWrite<float>(posH, idx);
             for (int k = 0; k < 3; ++k) {
-                p[k] = particles[i][k];
+                p[k] = particles[i].pos[k];
             }
         }
 
@@ -160,7 +160,7 @@ public:
     }
 
     vec3 getWeightGradient(vec3 xp, vec3 xi) {
-        T delta = INV_CELL_SIZE * (xp - xi);
+        vec3 delta = INV_CELL_SIZE * (xp - xi);
         vec3 n(N(delta[0]), N(delta[1]), N(delta[2]));
         vec3 dn(NPrime(delta[0]), NPrime(delta[1]), NPrime(delta[2]));
         vec3 wd;
@@ -204,8 +204,8 @@ public:
 	std::vector<Particle<T>> particles;
     GridData<vec3> nodeForces;
     GridData<vec3> nodeVels;
-    GridData<vec3> nodeMasses;
-    GridData<T> nodeMomentums;
+    GridData<T> nodeMasses;
+    GridData<vec3> nodeMomentums;
 	vec3i dims;
     int numFrames = 0;
 };

@@ -74,7 +74,7 @@ public:
 	 * position pos. Uses cubic interpolation.
 	 */
 	virtual U interpolate(vec3 pos) {
-
+		return U(0);
 	}
 
 	/**

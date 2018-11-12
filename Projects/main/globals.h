@@ -14,13 +14,13 @@
 constexpr int dim = 3;
 using T = double;
 
-#define CELL_SIZE 1.f
-#define INV_CELL_SIZE (1.f / CELL_SIZE)
+#define CELL_SIZE (T(1.0))
+#define INV_CELL_SIZE (T(1.f / CELL_SIZE))
 #define DEBUG 1
-#define dt 1e-6
-T k = 100000;
-T nu = .3;
-T V0 = 1e-3;
+#define dt (T(0.000001))
+static T k = 100000;
+static T nu = .3;
+static T V0 = 1e-3;
 
 using vec2i = Eigen::Matrix<int, 2, 1>;
 using vec3i = Eigen::Matrix<int, 3, 1>;
@@ -32,21 +32,21 @@ using vecXD = Eigen::VectorXd;
 
 const T PI = 3.14159265358979323846264338327950288;
 
-double floorX(double a) {
+inline double floorX(double a) {
     return std::floor(a);
 }
 
-vec3 floor(vec3 v) {
+inline vec3 floor(vec3 v) {
 	vec3 ret = v.unaryExpr(&floorX);
 	return ret;
 }
 
-mat3 floor(mat3 m) {
+inline mat3 floor(mat3 m) {
 	mat3 ret = m.unaryExpr(&floorX);
 	return ret;
 }
 
-vec3 sign(vec3 v) {
+inline vec3 sign(vec3 v) {
 	vec3 ret;
 	ret[0] = v[0] < 0 ? -1 : 1;
 	ret[1] = v[1] < 0 ? -1 : 1;
@@ -60,7 +60,7 @@ vec3 sign(vec3 v) {
 
 using PointList = std::vector<vec3>;
 
-T rng() { return ((T) std::rand() / (RAND_MAX)); }
+inline T rng() { return ((T) std::rand() / (RAND_MAX)); }
 
-mat3 D = ((1.0 / 3.0) * CELL_SIZE * CELL_SIZE * mat3::Identity());
-mat3 D_INV = D.inverse();
+static mat3 D = ((1.0 / 3.0) * CELL_SIZE * CELL_SIZE * mat3::Identity());
+static mat3 D_INV = D.inverse();

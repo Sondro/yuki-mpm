@@ -17,6 +17,6 @@ public:
     mat3 F; // deformation gradient
     void reset() {
         this->vel = vec3(0);
-        this->B = mat3(0);
+        this->B = mat3::Zero();
     }
 };
