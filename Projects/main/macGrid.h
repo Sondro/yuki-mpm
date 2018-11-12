@@ -95,7 +95,7 @@ public:
                         vec3i nIdx = gridIdx + vec3i(i, j, k);
                         vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                         T w = getWeight(xp, xi);
-                        vec3 v = nodeMomentums(nIdx) / nodeMasses(nIdx);
+                        vec3 v = nodeVels(nIdx);
                         newF += v * getWeightGradient(xp, xi).transpose();
                         p.vel += w * v;
                         p.B += w * v * (xi - xp).transpose();
@@ -198,8 +198,6 @@ public:
             return 0.0;
         }
     }
-
-
 
 	std::vector<Particle<T>> particles;
     GridData<vec3> nodeForces;
