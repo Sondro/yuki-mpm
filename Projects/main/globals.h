@@ -15,7 +15,12 @@ constexpr int dim = 3;
 using T = double;
 
 #define CELL_SIZE 1.f
+#define INV_CELL_SIZE (1.f / CELL_SIZE)
 #define DEBUG 1
+#define dt 1e-6
+T k = 100000;
+T nu = .3;
+T V0 = 1e-3;
 
 using vec2i = Eigen::Matrix<int, 2, 1>;
 using vec3i = Eigen::Matrix<int, 3, 1>;
@@ -56,3 +61,6 @@ vec3 sign(vec3 v) {
 using PointList = std::vector<vec3>;
 
 T rng() { return ((T) std::rand() / (RAND_MAX)); }
+
+mat3 D = ((1.0 / 3.0) * CELL_SIZE * CELL_SIZE * mat3::Identity());
+mat3 D_INV = D.inverse();
