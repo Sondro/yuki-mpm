@@ -33,24 +33,8 @@ public:
             int offset = 2;
 
 #if DEBUG
-            T weight = 0;
-            for (int i = -offset; i <= offset; i++) {
-                for (int j = -offset; j <= offset; j++) {
-                    for (int k = -offset; k <= offset; k++) {
-                        vec3i nIdx = gridIdx + vec3i(i, j, k);
-                        if (outOfBounds(nIdx)) { continue; }
-                        vec3 xi = nIdx.cast<T>() * CELL_SIZE;
-                        weight += getWeight(xp, xi);
-                    }
-                }
-            }
-            bool isOne = std::abs(weight - 1) < 0.0001;
-            if (!isOne) {
-                std::cout << "Weight is " << weight << " at idx (" << gridIdx[0] << ", " << gridIdx[1] << ", " << gridIdx[2] << ")" << std::endl;
-            }
-            assert(isOne);
+            T totalWeight = 0;
 #endif
-
             for (int i = -offset; i <= offset; i++) {
                 for (int j = -offset; j <= offset; j++) {
                     for (int k = -offset; k <= offset; k++) {
@@ -58,6 +42,9 @@ public:
                         if (outOfBounds(nIdx)) { continue; }
                         vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                         T w = getWeight(xp, xi);
+#if DEBUG
+                        totalWeight += w;
+#endif
                         // transfer the masses
                         T m = w * p.mass;
                         vec3 _p = w * p.mass * (p.vel + p.B * D_INV * (xi - xp));
@@ -66,6 +53,9 @@ public:
                     }
                 }
             }
+#if DEBUG
+            assert(cmpT(totalWeight, "Total Weight", WEIGHT_CONSTRAINT, "1"));
+#endif
 		}
 	}
 
@@ -140,6 +130,9 @@ public:
             vec3i gridIdx = nodeVels.cellOf(xp);
             int offset = 2;
 
+#if DEBUG
+            vec3 totalWeightGrad = vec3::Zero();
+#endif
             p.reset();
             mat3 newF = mat3::Zero();
             for (int i = -offset; i <= offset; i++) {
@@ -151,6 +144,9 @@ public:
                         T w = getWeight(xp, xi);
                         vec3 v = nodeVels(nIdx);
                         newF += v * getWeightGradient(xp, xi).transpose();
+#if DEBUG
+                        totalWeightGrad += getWeightGradient(xp, xi);
+#endif
                         p.vel += w * v;
 #ifdef APIC
                         p.B += w * v * (xi - xp).transpose();
@@ -160,6 +156,9 @@ public:
                     }
                 }
             }
+#if DEBUG
+            assert(cmpVec3(totalWeightGrad, "Total Weight Gradient", ZERO_VECTOR, "Zero Vector"));
+#endif
 
             p.F *= (mat3::Identity() + dt * newF);
         }
@@ -168,6 +167,10 @@ public:
     void advectParticles() {
         for (auto &p : particles) {
             p.pos += p.vel * dt;
+            if (p.pos[1] < 4.0) {
+                p.pos[1] = 4.0;
+                if (p.vel[1] < 0) p.vel = vec3::Zero();
+            }
         }
     }
 
@@ -270,10 +273,10 @@ public:
         T absX = std::abs(x);
         if (absX >= 0.0 && absX < 1.0) {
             T x2 = absX * absX;
-            return 1.5 * x2 - 2 * absX;
+            return 0.5 * x * (3 * absX - 4.0);
         } else if (absX >= 1.0 && absX < 2.0) {
             T k = 2.0 - absX;
-            return -0.5 * k * k;
+            return (-x * k * k) / (2 * absX);
         } else {
             return 0.0;
         }
@@ -287,20 +290,34 @@ public:
         }
 
         for (int i = 0; i < nodeVels.length; i++) {
-            //nodeP += nodeMasses.mData[i] * nodeVels.mData[i];
-            nodeP += nodeMomentums.mData[i];
+            nodeP += nodeMasses.mData[i] * nodeVels.mData[i];
+            //nodeP += nodeMomentums.mData[i];
         }
 
+        assert(cmpVec3(nodeP, "Node Momentums", particleP, "Particle Momentums"));
+    }
+
+    bool cmpVec3(vec3 &v1, const char *v1Name, vec3 &v2, const char *v2Name) {
         bool isEqual = true;
         for (int i = 0; i < 3; i++) {
-            isEqual = isEqual && std::abs(nodeP[i] - particleP[i]) < 0.00001;
+            isEqual = isEqual && std::abs(v1[i] - v2[i]) < EPSILON;
             if (!isEqual) {
-                printf("Particle Momentum: %f, %f, %f\n", particleP[0], particleP[1], particleP[2]);
-                printf("Node Momentum: %f, %f, %f\n", nodeP[0], nodeP[1], nodeP[2]);
+                printf("%s: %f, %f, %f\n", v1Name, v1[0], v1[1], v1[2]);
+                printf("%s: %f, %f, %f\n", v2Name, v2[0], v2[1], v2[2]);
                 return isEqual;
             }
         }
         return isEqual;
+    }
+
+    bool cmpT(T &v1, const char *v1Name, T &v2, const char *v2Name) {
+        if (std::abs(v1 - v2) > EPSILON) {
+            printf("%s: %f", v1Name, v1);
+            printf("%s: %f", v2Name, v2);
+            return false;
+        } else {
+            return true;
+        }
     }
 
 	std::vector<Particle<T>> particles;

@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
 
     vec3i dim(10, 10, 10);
     vec3 initialPos;
-    initialPos << dim[0] / 2, dim[1] / 2, dim[2] / 2;
+    initialPos << dim[0] / 2, 7, dim[2] / 2;
     SamplerGrid<T> result = s->generatePoissonDistr();
     PointList samples = result.getAllSamples();
     s->saveSamples(samples, "samples.bgeo");

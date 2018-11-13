@@ -18,7 +18,7 @@ using T = double;
 #define INV_CELL_SIZE (T(1.f / CELL_SIZE))
 #define DEBUG 1
 //#define APIC
-//#define STRESS
+#define STRESS
 #define dt (T(0.01))
 static T k = 100000;
 static T nu = .3;
@@ -74,4 +74,12 @@ inline vec3 gravityAcceleration() {
     return g;
 }
 
+inline vec3 zeroVector() {
+    return vec3::Zero();
+}
+
 static vec3 g = gravityAcceleration();
+
+static T EPSILON = 100.0 * dt;
+static T WEIGHT_CONSTRAINT = 1.0;
+static vec3 ZERO_VECTOR = zeroVector();
