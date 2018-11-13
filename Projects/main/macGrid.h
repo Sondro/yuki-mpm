@@ -32,6 +32,25 @@ public:
 			vec3i gridIdx = nodeVels.cellOf(xp);
             int offset = 2;
 
+#if DEBUG
+            T weight = 0;
+            for (int i = -offset; i <= offset; i++) {
+                for (int j = -offset; j <= offset; j++) {
+                    for (int k = -offset; k <= offset; k++) {
+                        vec3i nIdx = gridIdx + vec3i(i, j, k);
+                        if (outOfBounds(nIdx)) { continue; }
+                        vec3 xi = nIdx.cast<T>() * CELL_SIZE;
+                        weight += getWeight(xp, xi);
+                    }
+                }
+            }
+            bool isOne = std::abs(weight - 1) < 0.0001;
+            if (!isOne) {
+                std::cout << "Weight is " << weight << " at idx (" << gridIdx[0] << ", " << gridIdx[1] << ", " << gridIdx[2] << ")" << std::endl;
+            }
+            assert(isOne);
+#endif
+
             for (int i = -offset; i <= offset; i++) {
                 for (int j = -offset; j <= offset; j++) {
                     for (int k = -offset; k <= offset; k++) {
