@@ -5,7 +5,7 @@
 
 class Simulation {
 public:
-	Simulation(vec3i gridDims, double seconds = 20.0, double fps = 24.0);
+	Simulation(int i, int j, int k, vec3 transform, std::vector<Particle<T>> particle, double seconds = 20.0, double fps = 24.0);
 	void run();
 
 	MACGrid<T> grid;

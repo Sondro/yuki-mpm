@@ -4,8 +4,8 @@
 template <typename T>
 class Particle {
 public:
-    Particle(vec3 pos = vec3(0),
-             vec3 vel = vec3(0),
+    Particle(vec3 pos = vec3::Zero(),
+             vec3 vel = vec3::Zero(),
              T mass = 1.0,
              mat3 B = mat3::Zero(),
              mat3 F = mat3::Identity()) :
@@ -16,7 +16,7 @@ public:
 	mat3 B;
     mat3 F; // deformation gradient
     void reset() {
-        this->vel = vec3(0);
+        this->vel = vec3::Zero();
         this->B = mat3::Zero();
     }
 };

@@ -17,7 +17,9 @@ using T = double;
 #define CELL_SIZE (T(1.0))
 #define INV_CELL_SIZE (T(1.f / CELL_SIZE))
 #define DEBUG 1
-#define dt (T(0.000001))
+//#define APIC
+//#define STRESS
+#define dt (T(0.01))
 static T k = 100000;
 static T nu = .3;
 static T V0 = 1e-3;
@@ -27,6 +29,7 @@ using vec3i = Eigen::Matrix<int, 3, 1>;
 
 using vec3 = Eigen::Matrix<T, 3, 1>;
 using mat3 = Eigen::Matrix<T, 3, 3>;
+using mat4 = Eigen::Matrix<T, 4, 4>;
 
 using vecXD = Eigen::VectorXd;
 
@@ -64,3 +67,11 @@ inline T rng() { return ((T) std::rand() / (RAND_MAX)); }
 
 static mat3 D = ((1.0 / 3.0) * CELL_SIZE * CELL_SIZE * mat3::Identity());
 static mat3 D_INV = D.inverse();
+
+inline vec3 gravityAcceleration() {
+    vec3 g;
+    g << 0, -9.8, 0;
+    return g;
+}
+
+static vec3 g = gravityAcceleration();

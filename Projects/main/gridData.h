@@ -9,12 +9,13 @@ template <typename U>
 class GridData {
 public:
 	// Constructors 
-	GridData(vec3i dims) :
-		length((dims[0] + 1) * 
-			  (dims[1] + 1) * 
-			  (dims[2] + 1)),
-		mData(length, U(0)),
-		dims(dims) {}
+	GridData(int i, int j, int k) :
+		length((i + 1) *
+			  (j + 1) *
+			  (k + 1)),
+		mData(length, U()) {
+        dims << i, j, k;
+    }
 	GridData(const GridData<U> &other) :
 		mData(other.mData),
 		dims(other.dims) {} // copy
@@ -28,6 +29,20 @@ public:
 	GridData<U> &operator=(GridData<U> other) {
 		swap(*this, other);
 	} // copy assignment operator
+
+    bool inRange(int x, int y, int z) const {
+        return !(x < 0 || y < 0 || z < 0 ||
+                 x > dims[0] - 1 ||
+                 y > dims[1] - 1 ||
+                 z > dims[1] - 1);
+    }
+
+    bool inRange(const vec3 &pos) const {
+        return !(pos[0] < 0 || pos[1] < 0 || pos[2] < 0 ||
+                 pos[0] > dims[0] * CELL_SIZE ||
+                 pos[1] > dims[1] * CELL_SIZE ||
+                 pos[2] > dims[2] * CELL_SIZE);
+    }
 
 	/**
 	 * Returns a reference to the value located at the grid cell
@@ -140,13 +155,13 @@ public:
     /**
      * Resets the data of this gridData to 0.
      */
-    void reset() {
+    void reset(U value) {
         for (auto it = mData.begin(); it != mData.end(); ++it) {
-            *it = U(0);
+            *it = value;
         }
     }
 
 	int length;
 	std::vector<U> mData;
-	vec3i dims;
+	vec3 dims;
 };
