@@ -153,6 +153,26 @@ public:
 #else
                         p.B = mat3::Zero();
 #endif
+                        // Plasticity update
+                        newFeTilda = newF * p.Fp.Inverse();
+
+                        Eigen::JacobiSVD<mat3> svd(newFeTilda, Eigen::ComputeFullU | Eigen::ComputeFullV);
+                        mat3 newUE = svd.matrixU();
+                        mat3 newVE = svd.matrixV();
+                        vec3 sigma = svd.singularValues();
+                        double thetaC = 3e-5;
+                        double thetaS = 2e-3; // These are entirely made up; let's just take the values Josh used
+                        for (auto& s : sigma) {
+                            std::clamp(s, 1 - thetaC, 1 + thetaS);
+                        }
+
+                        mat3 SigmaE;
+                        for (int i = 0; i < 3; ++i) {
+                            SigmaE(i, i) = sigma[i]; // Not sure about syntax
+                        }
+
+                        p.Fe = newUE * SigmaE * newVE.transpose();
+                        p.Fp = p.Fe.Inverse() * newF;
                     }
                 }
             }
@@ -210,11 +230,8 @@ public:
     }
 
     mat3 NeoHookeanDeltaPsi(mat3 F) {
-        Eigen::JacobiSVD<mat3> svd(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        mat3 U = svd.matrixU();
-        mat3 V = svd.matrixV();
-        if (U.determinant() < 0) { U.col(2) *= -1; }
-        if (V.determinant() < 0) { V.col(2) *= -1; }
+        mat3 U, V;
+        checkedSVD(U, V);
 
         mat3 R = U * V.transpose();
 
@@ -232,9 +249,38 @@ public:
         JFinvT(2, 1) = F(0, 2) * F(1, 0) - F(0, 0) * F(1, 2);
         JFinvT(2, 2) = F(0, 0) * F(1, 1) - F(0, 1) * F(1, 0);
         double J = F.determinant();
+
         mat3 P = 2 * mu * (F - R) + lambda * (J - 1.f) * JFinvT;
 
         return P;
+    }
+
+    // Incorporates plasticity and hardening effects
+    double calculatePlasticEnergyDensity(mat3 F, mat3 Fp) {
+        mat3 U, V;
+        checkedSVD(U, V);
+
+        mat3 R = U * V.transpose();
+
+        // Initial values of mu and lambda; nu is Poisson's ratio
+        double mu0 = k / (2 * (1.0 + nu));
+        double lambda0 = (k * nu) / ((1.0 + nu) * (1.0 - (2.0 * nu)));
+        // Hardening parameter; typically a value between 3 and 10
+        double xi = 7.0;
+
+        double Jp = Fp.determinant();
+        double mu = mu0 * std::exp(xi * (1 - Jp));
+        double lambda = lambda0 * std::exp(xi * (1 - Jp));
+        double FRDet = (F - R).determinant();
+        return mu * FRDet * FRDet + 0.5 * lambda * (J - 1) * (J - 1);
+    }
+
+    void checkedSVD(mat3& U, mat3& V) {
+        Eigen::JacobiSVD<mat3> svd(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
+        mat3 U = svd.matrixU();
+        mat3 V = svd.matrixV();
+        if (U.determinant() < 0) { U.col(2) *= -1; }
+        if (V.determinant() < 0) { V.col(2) *= -1; }
     }
 
     T getWeight(vec3 xp, vec3 xi) {
