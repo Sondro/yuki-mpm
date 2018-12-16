@@ -16,17 +16,21 @@ int main(int argc, char **argv) {
 
 	Sampler<T> *s = new Sampler<T>(n, r2 / 2.0, k);
 
-    vec3i dim(10, 10, 10);
+    vec3i dim(X_CELL_COUNT, Y_CELL_COUNT, Z_CELL_COUNT);
     vec3 initialPos;
-    initialPos << dim[0] / 2, 7, dim[2] / 2;
+    initialPos << 3, 5.5, 3;
     SamplerGrid<T> result = s->generatePoissonDistr();
     PointList samples = result.getAllSamples();
     s->saveSamples(samples, "samples.bgeo");
     std::vector<Particle<T>> particles;
     for (const auto &sample : samples) {
-        particles.push_back(Particle<T>(sample));
+    	Particle<T> p(sample);
+		p.vol = VOLUME / samples.size();
+		p.mass = DENSITY * p.vol;
+        particles.push_back(p);
     }
     Simulation sim(dim[0], dim[1], dim[2], initialPos, particles);
+    sim.grid.drawGrid();
     std::cout << "running" << std::endl;
     sim.run();
 	return 0;

@@ -14,15 +14,34 @@
 constexpr int dim = 3;
 using T = double;
 
-#define CELL_SIZE (T(1.0))
-#define INV_CELL_SIZE (T(1.f / CELL_SIZE))
+constexpr T DENSITY = 1.0;
+constexpr T VOLUME = 1.0;
+
+// The length, width, and height of each cell
+// Each cell is a cube
+constexpr T CELL_SIZE = 0.2;
+constexpr T INV_CELL_SIZE = 1.0 / CELL_SIZE;
+
+// The extent of grid
+// Along with the cell size, determines how many cells should
+// be in the grid
+constexpr T X_SIZE = 10;
+constexpr T Y_SIZE = 10;
+constexpr T Z_SIZE = 10;
+
+constexpr int X_CELL_COUNT = static_cast<int>(X_SIZE / CELL_SIZE);
+constexpr int Y_CELL_COUNT = static_cast<int>(Y_SIZE / CELL_SIZE);
+constexpr int Z_CELL_COUNT = static_cast<int>(Z_SIZE / CELL_SIZE);
+
 #define DEBUG 1
 //#define APIC
-#define STRESS
-#define dt (T(0.01))
-static T k = 100000;
-static T nu = .3;
-static T V0 = 1e-3;
+#define STRESS 0
+#define GRAVITY 1
+
+constexpr T dt = 0.0001;
+constexpr T k = 100000;
+constexpr T nu = .3;
+constexpr T V0 = 1e-3;
 
 using vec2i = Eigen::Matrix<int, 2, 1>;
 using vec3i = Eigen::Matrix<int, 3, 1>;
@@ -33,7 +52,7 @@ using mat4 = Eigen::Matrix<T, 4, 4>;
 
 using vecXD = Eigen::VectorXd;
 
-const T PI = 3.14159265358979323846264338327950288;
+constexpr T PI = 3.14159265358979323846264338327950288;
 
 inline double floorX(double a) {
     return std::floor(a);
@@ -68,18 +87,14 @@ inline T rng() { return ((T) std::rand() / (RAND_MAX)); }
 static mat3 D = ((1.0 / 3.0) * CELL_SIZE * CELL_SIZE * mat3::Identity());
 static mat3 D_INV = D.inverse();
 
-inline vec3 gravityAcceleration() {
-    vec3 g;
-    g << 0, -9.8, 0;
-    return g;
-}
+static vec3 g = []() {
+	vec3 g;
+	g << 0, -9.8, 0;
+	return g;
+}();
 
-inline vec3 zeroVector() {
-    return vec3::Zero();
-}
-
-static vec3 g = gravityAcceleration();
-
-static T EPSILON = 100.0 * dt;
-static T WEIGHT_CONSTRAINT = 1.0;
-static vec3 ZERO_VECTOR = zeroVector();
+constexpr T EPSILON = 100.0 * dt;
+constexpr T WEIGHT_CONSTRAINT = 1.0;
+static vec3 ZERO_VECTOR = []() {
+	return vec3::Zero();
+}();

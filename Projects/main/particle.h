@@ -15,6 +15,7 @@ public:
 	T mass;
 	mat3 B;
     mat3 F; // deformation gradient
+    T vol;
     void reset() {
         this->vel = vec3::Zero();
         this->B = mat3::Zero();

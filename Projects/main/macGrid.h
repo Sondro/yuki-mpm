@@ -1,4 +1,5 @@
 #pragma once
+#include <fstream>
 #include "globals.h"
 #include "particle.h"
 #include "gridData.h"
@@ -98,8 +99,8 @@ public:
                         if (outOfBounds(nIdx)) continue;
                         vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                         vec3 wd = getWeightGradient(xp, xi);
-#ifdef STRESS
-                        nodeForces(nIdx) += -V0 * NeoHookeanDeltaPsi(p.F) * p.F.transpose() * wd;
+#if STRESS
+                        nodeForces(nIdx) += -p.vol * NeoHookeanDeltaPsi(p.F) * p.F.transpose() * wd;
 #endif
                     }
                 }
@@ -167,12 +168,18 @@ public:
     void advectParticles() {
         for (auto &p : particles) {
             p.pos += p.vel * dt;
-            if (p.pos[1] < 4.0) {
-                p.pos[1] = 4.0;
-                if (p.vel[1] < 0) p.vel = vec3::Zero();
-            }
         }
     }
+
+    void handleCollisions() {
+	    for (int i = 0; i < dims[0]; ++i) {
+	        for (int k = 0; k < dims[2]; ++k) {
+	            if (nodeVels(i, 0, k)[1] < T(0)) {
+	                nodeVels(i, 0, k)[1] = 0;
+	            }
+	        }
+	    }
+	}
 
     void writeFrame() {
         Partio::ParticlesDataMutable *parts = Partio::create();
@@ -202,6 +209,7 @@ public:
 #endif
         computeGridForces();
         applyGridForces();
+        handleCollisions();
         gridToParticle();
 #if DEBUG
         assert(isMomentumConserved());
@@ -318,6 +326,62 @@ public:
         } else {
             return true;
         }
+    }
+
+    void drawGrid() {
+        // dims is number of cells along an axis
+        std::ofstream polyFile("grid.poly");
+
+        polyFile << "POINTS\n";
+        for (unsigned int k = 0; k < dims[2]; ++k) {
+            for (unsigned int j = 0; j < dims[1]; ++j) {
+                for (unsigned int i = 0; i < dims[0]; ++i) {
+                    unsigned int idx = i + j * dims[0] + k * dims[0] * dims[1];
+                    polyFile << idx + 1 << ": ";
+                    T x = CELL_SIZE * i;
+                    T y = CELL_SIZE * j;
+                    T z = CELL_SIZE * k;
+                    polyFile << x << " " << y << " " << z << "\n";
+                }
+            }
+        }
+
+        polyFile << "POLYS\n";
+        int segCount = 1;
+        for (int i = 0; i < dims[0]; ++i) {
+            for (int j = 0; j < dims[1]; ++j) {
+                for (int k = 0; k < dims[2]; ++k) {
+                    int idx = i + j * dims[0] + k * dims[0] * dims[1];
+                    int idx_0 = (i - 1 == -1 ? 0 : i - 1) +
+                                         j * dims[0] +
+                                         k * dims[0] * dims[1];
+                    int idx_1 = (i + 1 == dims[0] ? dims[0] - 1 : i + 1) +
+                                         j * dims[0] +
+                                         k * dims[0] * dims[1];
+                    int idx_2 = i +
+                                         (j - 1 == -1 ? 0 : j - 1) * dims[0] +
+                                         k * dims[0] * dims[1];
+                    int idx_3 = i +
+                                         (j + 1 == dims[1] ? dims[1] : j + 1) * dims[0] +
+                                         k * dims[0] * dims[1];
+                    int idx_4 = i +
+                                         j * dims[0] +
+                                         (k - 1 == -1 ? 0 : k - 1) * dims[0] * dims[1];
+                    int idx_5 = i +
+                                         j * dims[0] +
+                                         (k + 1 == dims[2] ? dims[2] : k + 1) * dims[0] * dims[1];
+                    int indices[6] = { idx_0, idx_1, idx_2, idx_3, idx_4, idx_5 };
+                    for (int l = 0; l < 6; ++l) {
+                        polyFile << segCount << ":";
+                        polyFile << " " << idx << " " << indices[l] << "\n";
+                        segCount++;
+                    }
+                }
+            }
+        }
+
+        polyFile << "END";
+        polyFile.close();
     }
 
 	std::vector<Particle<T>> particles;
