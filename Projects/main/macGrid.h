@@ -350,7 +350,9 @@ public:
             //nodeP += nodeMomentums.mData[i];
         }
 
-        assert(cmpVec3(nodeP, "Node Momentums", particleP, "Particle Momentums"));
+        bool isConserved = cmpVec3(nodeP, "Node Momentums", particleP, "Particle Momentums");
+        assert(isConserved);
+        return isConserved;
     }
 
     bool cmpVec3(vec3 &v1, const char *v1Name, vec3 &v2, const char *v2Name) {
@@ -401,23 +403,23 @@ public:
                 for (int k = 0; k < dims[2]; ++k) {
                     int idx = i + j * dims[0] + k * dims[0] * dims[1];
                     int idx_0 = (i - 1 == -1 ? 0 : i - 1) +
-                                         j * dims[0] +
-                                         k * dims[0] * dims[1];
+                                 j * dims[0] +
+                                 k * dims[0] * dims[1];
                     int idx_1 = (i + 1 == dims[0] ? dims[0] - 1 : i + 1) +
-                                         j * dims[0] +
-                                         k * dims[0] * dims[1];
+                                 j * dims[0] +
+                                 k * dims[0] * dims[1];
                     int idx_2 = i +
-                                         (j - 1 == -1 ? 0 : j - 1) * dims[0] +
-                                         k * dims[0] * dims[1];
+                                 (j - 1 == -1 ? 0 : j - 1) * dims[0] +
+                                 k * dims[0] * dims[1];
                     int idx_3 = i +
-                                         (j + 1 == dims[1] ? dims[1] : j + 1) * dims[0] +
-                                         k * dims[0] * dims[1];
+                                 (j + 1 == dims[1] ? dims[1] : j + 1) * dims[0] +
+                                 k * dims[0] * dims[1];
                     int idx_4 = i +
-                                         j * dims[0] +
-                                         (k - 1 == -1 ? 0 : k - 1) * dims[0] * dims[1];
+                                 j * dims[0] +
+                                 (k - 1 == -1 ? 0 : k - 1) * dims[0] * dims[1];
                     int idx_5 = i +
-                                         j * dims[0] +
-                                         (k + 1 == dims[2] ? dims[2] : k + 1) * dims[0] * dims[1];
+                                 j * dims[0] +
+                                 (k + 1 == dims[2] ? dims[2] : k + 1) * dims[0] * dims[1];
                     int indices[6] = { idx_0, idx_1, idx_2, idx_3, idx_4, idx_5 };
                     for (int l = 0; l < 6; ++l) {
                         polyFile << segCount << ":";

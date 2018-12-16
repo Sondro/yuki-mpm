@@ -96,7 +96,7 @@ public:
      */
     bool addSample(vec3 pt) {
         int idx = getCellIndex(pt);
-        if (idx < 0 || idx >= mData.size()) return false;
+        if (idx < 0 || static_cast<unsigned int>(idx) >= mData.size()) return false;
         (*this)[idx].push_back(pt);
         return true;
     }
@@ -140,12 +140,14 @@ public:
 	 * poisson distribution. Then creates n poisson unit cube distributions
 	 * with the master tile as the initial active sample set.
 	 */
-	Sampler(T n, T r, T k) :  n(n), r(r), k(k),
-                              cellWidth(2.0 * r),
-                              inverseCellWidth(1.0 / (2.0 * r)),
-                              gridResolution(1.0 / (2.0 * r)),
-                              unitCube(generatePoissonDistr()){
- 	}
+    Sampler(T n, T r, T k) :
+        n(n), r(r), k(k),
+        gridResolution(1.0 / (2.0 * r)),
+        inverseCellWidth(1.0 / (2.0 * r)),
+        cellWidth(2.0 * r),
+        numSamples(0),
+        unitCube(generatePoissonDistr()) {}
+
 
     /**
      * Generate poisson samples using Fast Poisson Disk Sampling. Grid is
@@ -337,6 +339,9 @@ public:
  		parts->release();
  	}
 
+    // dimension, poisson disk radius, and number of tries to generate successful samples
+    T n, r, k;
+
     // number of cells in each dimension of the grid
 	int gridResolution;
 
@@ -345,9 +350,6 @@ public:
 
     // width of the cells in the grid data structure
     T cellWidth;
-
-    // dimension, poisson disk radius, and number of tries to generate successful samples
-    T n, r, k;
 
     // number of total samples generated in this sampler
     int numSamples = 0;
