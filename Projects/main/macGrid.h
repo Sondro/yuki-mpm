@@ -118,7 +118,6 @@ public:
                     if (nodeMasses(i, j, k) != 0) {
                         nodeVels(i, j, k) +=  dt * nodeForces(i, j, k) / nodeMasses(i, j, k);
                     }
-
                 }
             }
         }
@@ -144,9 +143,20 @@ public:
                         vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                         T w = getWeight(xp, xi);
                         vec3 v = nodeVels(nIdx);
-                        newF += v * getWeightGradient(xp, xi).transpose();
+                        vec3 dw = getWeightGradient(xp, xi);
+						mat3 test;
+						test(0,0) = v(0) * dw(0);
+						test(0,1) = v(0) * dw(1);
+						test(0,2) = v(0) * dw(2);
+						test(1,0) = v(1) * dw(0);
+						test(1,1) = v(1) * dw(1);
+						test(1,2) = v(1) * dw(2);
+						test(2,0) = v(2) * dw(0);
+						test(2,1) = v(2) * dw(1);
+						test(2,2) = v(2) * dw(2);
+                        newF += test;
 #if DEBUG
-                        totalWeightGrad += getWeightGradient(xp, xi);
+                        totalWeightGrad += dw;
 #endif
                         p.vel += w * v;
 #ifdef APIC
@@ -155,6 +165,7 @@ public:
                         p.B = mat3::Zero();
 #endif
                         // Plasticity update
+                        /*
                         auto newFeTilda = newF * p.Fp.inverse();
 
                         Eigen::JacobiSVD<mat3> svd(newFeTilda, Eigen::ComputeFullU | Eigen::ComputeFullV);
@@ -176,14 +187,16 @@ public:
 
                         p.Fe = newUE * SigmaE * newVE.transpose();
                         p.Fp = p.Fe.inverse() * newF;
+                         */
                     }
                 }
             }
 #if DEBUG
             assert(cmpVec3(totalWeightGrad, "Total Weight Gradient", ZERO_VECTOR, "Zero Vector"));
 #endif
-
-            p.F *= (mat3::Identity() + dt * newF);
+			mat3 defGrad = p.F + dt * newF * p.F;
+			p.F = defGrad;
+            //p.F += dt * newF * p.F;
         }
     }
 
@@ -203,18 +216,72 @@ public:
 	    }
 	}
 
+	void setBoundaryVelocities(int thickness) {
+	    for (int i = 0; i < thickness; ++i) {
+	        for (int j = 0; j < dims[1]; ++j) {
+	            for (int k = 0; k < dims[2]; ++k) {
+	                nodeVels(i, j, k) = ZERO_VECTOR;
+	            }
+	        }
+	    }
+
+	    for (int i = dims[0] - thickness; i < dims[0]; ++i) {
+            for (int j = 0; j < dims[1]; ++j) {
+                for (int k = 0; k < dims[2]; ++k) {
+                    nodeVels(i, j, k) = ZERO_VECTOR;
+                }
+            }
+	    }
+
+        for (int i = 0; i < dims[0]; ++i) {
+            for (int j = 0; j < thickness; ++j) {
+                for (int k = 0; k < dims[2]; ++k) {
+                    nodeVels(i, j, k) = ZERO_VECTOR;
+                }
+            }
+        }
+
+        for (int i = 0; i < dims[0]; ++i) {
+            for (int j = dims[1] - thickness; j < dims[1]; ++j) {
+                for (int k = 0; k < dims[2]; ++k) {
+                    nodeVels(i, j, k) = ZERO_VECTOR;
+                }
+            }
+        }
+
+        for (int i = 0; i < dims[0]; ++i) {
+            for (int j = 0; j < dims[1]; ++j) {
+                for (int k = 0; k < thickness; ++k) {
+                    nodeVels(i, j, k) = ZERO_VECTOR;
+                }
+            }
+        }
+
+        for (int i = 0; i < dims[0]; ++i) {
+            for (int j = 0; j < dims[1]; ++j) {
+                for (int k = dims[2] - thickness; k < dims[2]; ++k) {
+                    nodeVels(i, j, k) = ZERO_VECTOR;
+                }
+            }
+        }
+	}
+
     void writeFrame() {
         Partio::ParticlesDataMutable *parts = Partio::create();
         Partio::ParticleAttribute posH;
+        Partio::ParticleAttribute velH;
         std::string filename = "frames/frame_" + std::to_string(numFrames + 1) + ".bgeo";
 
         posH = parts->addAttribute("position", Partio::VECTOR, 3);
+        velH = parts->addAttribute("v", Partio::VECTOR, 3);
 
         for (unsigned int i = 0; i < particles.size(); ++i) {
             int idx = parts->addParticle();
             float *p = parts->dataWrite<float>(posH, idx);
+            float *v = parts->dataWrite<float>(velH, idx);
             for (int k = 0; k < 3; ++k) {
                 p[k] = particles[i].pos[k];
+                v[k] = particles[i].vel[k];
             }
         }
 
@@ -231,7 +298,7 @@ public:
 #endif
         computeGridForces();
         applyGridForces();
-        handleCollisions();
+        setBoundaryVelocities(3);
         gridToParticle();
 #if DEBUG
         assert(isMomentumConserved());
@@ -241,7 +308,7 @@ public:
 
     mat3 NeoHookeanDeltaPsi(mat3 F) {
         mat3 U, V;
-        checkedSVD(U, V);
+        checkedSVD(F, U, V);
 
         mat3 R = U * V.transpose();
 
@@ -351,7 +418,6 @@ public:
         }
 
         bool isConserved = cmpVec3(nodeP, "Node Momentums", particleP, "Particle Momentums");
-        assert(isConserved);
         return isConserved;
     }
 
@@ -368,7 +434,7 @@ public:
         return isEqual;
     }
 
-    bool cmpT(T &v1, const char *v1Name, T &v2, const char *v2Name) {
+    bool cmpT(T v1, const char *v1Name, T v2, const char *v2Name) {
         if (std::abs(v1 - v2) > EPSILON) {
             printf("%s: %f", v1Name, v1);
             printf("%s: %f", v2Name, v2);

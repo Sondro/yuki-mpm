@@ -14,13 +14,26 @@ int main(int argc, char **argv) {
     int seed = int(n * r2 * k);
     std::srand(seed);
 
-	Sampler<T> *s = new Sampler<T>(n, r2 / 2.0, k);
+    bool loadSamples = true;
+	Sampler<T> *s;
+	PointList samples;
+	if (loadSamples) {
+		// Loading samples
+		s = new Sampler<T>(n, r2 / 2.0, k, "poisson_unit_cube_9443samples.bgeo");
+		samples = s->unitCube.getAllSamples();
+		for (auto &sample : samples) {
+			sample /= 2;
+		}
+	}
+	if (!loadSamples) {
+		// Generating samples
+		s = new Sampler<T>(n, r2 / 2.0, k);
+		samples = s->unitCube.getAllSamples();
+	}
 
     vec3i dim(X_CELL_COUNT, Y_CELL_COUNT, Z_CELL_COUNT);
     vec3 initialPos;
     initialPos << 3, 5.5, 3;
-    SamplerGrid<T> result = s->generatePoissonDistr();
-    PointList samples = result.getAllSamples();
     s->saveSamples(samples, "samples.bgeo");
     std::vector<Particle<T>> particles;
     for (const auto &sample : samples) {
@@ -31,7 +44,6 @@ int main(int argc, char **argv) {
     }
     Simulation sim(dim[0], dim[1], dim[2], initialPos, particles);
     sim.grid.drawGrid();
-    std::cout << "running" << std::endl;
     sim.run();
 	return 0;
 }

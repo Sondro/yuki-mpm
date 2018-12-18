@@ -14,6 +14,22 @@ Simulation::Simulation(int i, int j, int k, vec3 transform, std::vector<Particle
     }
 }
 
+namespace {
+void printTime(float seconds) {
+	int i = static_cast<int>(std::round(seconds));
+	int h = i / 3600;
+	int m = (i % 3600) / 60;
+	int s = i % 60;
+	if (h > 0) {
+		std::cout << h << " h ";
+	}
+	if (h > 0 || m > 0) {
+		std::cout << m << " m ";
+	}
+	std::cout << s << " s";
+}
+}
+
 void Simulation::run() {
 	std::cout << "Beginning simulation..." << std::endl;
 	double cumTime = 0.0;
@@ -24,7 +40,9 @@ void Simulation::run() {
         grid.writeFrame();
         if (frame != 0) {
 			double avg = simTime * 1e-6 / frame;
-			std::cout << "    Estimated time remaining: " << avg * (frames - frame) << " s" << std::endl;
+			std::cout << "    Estimated time remaining: ";
+			printTime(avg * (frames - frame));
+			std::cout << "\n";
 		}
 		auto start = std::chrono::high_resolution_clock::now();
 

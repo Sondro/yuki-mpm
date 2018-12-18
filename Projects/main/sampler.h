@@ -105,19 +105,21 @@ public:
      * Return a list of samples contained in this grid data structure.
      * @return lists of samples.
      */
-    PointList getAllSamples() {
-        PointList pts;
-        for (int i = 0; i < gridResolution; i++) {
-            for (int j = 0; j < gridResolution; j++) {
-                for (int k = 0; k < gridResolution; k++) {
-                    PointList pointList = (*this)(i, j, k);
-                    for (vec3 p : pointList) {
-                        pts.push_back(p);
-                    }
-                }
-            }
-        }
-        return pts;
+    PointList getAllSamples() const {
+    	if (!isAllSamplesGen) {
+    		allSamples.clear();
+			for (int i = 0; i < gridResolution; i++) {
+				for (int j = 0; j < gridResolution; j++) {
+					for (int k = 0; k < gridResolution; k++) {
+						PointList pointList = (*this)(i, j, k);
+						for (vec3 p : pointList) {
+							allSamples.push_back(p);
+						}
+					}
+				}
+			}
+    	}
+    	return allSamples;
     }
 
     int gridResolution; // number of cells for each side.
@@ -126,6 +128,8 @@ public:
 
 private:
     FlatGrid mData; // array of point lists. there is a list of points per cell.
+    mutable bool isAllSamplesGen;
+    mutable PointList allSamples;
 };
 
 /**
@@ -148,6 +152,13 @@ public:
         numSamples(0),
         unitCube(generatePoissonDistr()) {}
 
+	Sampler(T n, T r, T k, const std::string &filename) :
+		n(n), r(r), k(k),
+		gridResolution(1.0 / (2.0 * r)),
+		inverseCellWidth(1.0 / (2.0 * r)),
+		cellWidth(2.0 * r),
+		numSamples(0),
+		unitCube(loadSamples(filename)) {}
 
     /**
      * Generate poisson samples using Fast Poisson Disk Sampling. Grid is
@@ -337,6 +348,25 @@ public:
 
  		Partio::write(filename.c_str(), *parts);
  		parts->release();
+ 	}
+
+ 	SamplerGrid<T> loadSamples(const std::string &filename) {
+ 		std::cout << "Loading samples from " << filename << "\n";
+		SamplerGrid<T> samples(gridResolution, cellWidth);
+ 		Partio::ParticlesDataMutable *parts = Partio::read(filename.c_str());
+ 		Partio::ParticleAttribute posAttr;
+ 		if (!parts->attributeInfo("position", posAttr)) {
+ 			std::cerr << "Invalid sample set\n";
+ 		}
+
+ 		for (int i = 0; i < parts->numParticles(); ++i) {
+ 			const float *pos = parts->data<float>(posAttr, i);
+ 			vec3 newPt;
+ 			newPt << pos[0], pos[1], pos[2];
+ 			samples.addSample(newPt);
+ 		}
+ 		std::cout << "Loaded " << samples.getAllSamples().size() << " samples\n";
+ 		return samples;
  	}
 
     // dimension, poisson disk radius, and number of tries to generate successful samples
