@@ -9,7 +9,12 @@ Simulation::Simulation(int i, int j, int k, vec3 transform, std::vector<Particle
 	fps(fps),
 	frames(fps * seconds) {
     grid.particles = particles;
+    mat3 rot;
+    rot << 0.7071068, -0.7071068, 0,
+		   0.7071068, 0.7071068, 0,
+		   0, 0, 1;
     for (auto &p : grid.particles) {
+		p.pos = rot * p.pos;
         p.pos += transform;
     }
 }

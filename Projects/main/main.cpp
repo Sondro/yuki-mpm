@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 	PointList samples;
 	if (loadSamples) {
 		// Loading samples
-		s = new Sampler<T>(n, r2 / 2.0, k, "poisson_unit_cube_9443samples.bgeo");
+		s = new Sampler<T>(n, r2 / 2.0, k, "poisson_unit_cube_1157samples.bgeo");
 		samples = s->unitCube.getAllSamples();
 		for (auto &sample : samples) {
 			sample /= 2;
@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
     vec3i dim(X_CELL_COUNT, Y_CELL_COUNT, Z_CELL_COUNT);
     vec3 initialPos;
-    initialPos << 3, 5.5, 3;
+    initialPos << 1, 5.5, 1;
     s->saveSamples(samples, "samples.bgeo");
     std::vector<Particle<T>> particles;
     for (const auto &sample : samples) {

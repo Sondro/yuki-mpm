@@ -19,27 +19,27 @@ constexpr T VOLUME = 1.0;
 
 // The length, width, and height of each cell
 // Each cell is a cube
-constexpr T CELL_SIZE = 0.3;
+constexpr T CELL_SIZE = 0.1;
 constexpr T INV_CELL_SIZE = 1.0 / CELL_SIZE;
 
 // The extent of grid (grid goes from {0, 0, 0} to {X, Y, Z}
 // Along with the cell size, determines how many cells should
 // be in the grid
-constexpr T X_SIZE = 10;
-constexpr T Y_SIZE = 10;
-constexpr T Z_SIZE = 10;
+constexpr T X_SIZE = 3;
+constexpr T Y_SIZE = 7;
+constexpr T Z_SIZE = 3;
 
 constexpr int X_CELL_COUNT = static_cast<int>(X_SIZE / CELL_SIZE);
 constexpr int Y_CELL_COUNT = static_cast<int>(Y_SIZE / CELL_SIZE);
 constexpr int Z_CELL_COUNT = static_cast<int>(Z_SIZE / CELL_SIZE);
 
 #define DEBUG 1
-//#define APIC
+#define APIC 1
 #define STRESS 1
 #define GRAVITY 1
 
 constexpr T dt = 0.0001;
-constexpr T k = 1000;
+constexpr T k = 100;
 constexpr T nu = .3;
 constexpr T V0 = 1e-3;
 

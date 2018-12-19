@@ -114,7 +114,8 @@ public:
             for (int j = 0; j < dims[1]; j++) {
                 for (int k = 0; k < dims[2]; k++) {
 
-                    nodeVels(i, j, k) += dt * nodeMasses(i, j, k) * g;
+                    //nodeVels(i, j, k) += dt * nodeMasses(i, j, k) * g;
+					nodeVels(i, j, k) += dt * g;
                     if (nodeMasses(i, j, k) != 0) {
                         nodeVels(i, j, k) +=  dt * nodeForces(i, j, k) / nodeMasses(i, j, k);
                     }
@@ -159,7 +160,7 @@ public:
                         totalWeightGrad += dw;
 #endif
                         p.vel += w * v;
-#ifdef APIC
+#if APIC
                         p.B += w * v * (xi - xp).transpose();
 #else
                         p.B = mat3::Zero();
@@ -507,4 +508,9 @@ public:
     GridData<vec3> nodeMomentums;
 	vec3 dims;
     int numFrames = 0;
+
+private:
+	bool checkCellDensityGreaterThan(int d) {
+
+	}
 };
