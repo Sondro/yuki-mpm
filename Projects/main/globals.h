@@ -38,10 +38,20 @@ constexpr int Z_CELL_COUNT = static_cast<int>(Z_SIZE / CELL_SIZE);
 #define STRESS 1
 #define GRAVITY 1
 
+#define FOR_EACH_NEIGHBOR int offset = 2; \
+for (int i = -offset; i <= offset; i++) { \
+for (int j = -offset; j <= offset; j++) { \
+for (int k = -offset; k <= offset; k++) {
+
+#define END_FOR_EACH_NEIGHBOR }}}
+
 constexpr T dt = 0.0001;
 constexpr T k = 100;
 constexpr T nu = .3;
 constexpr T V0 = 1e-3;
+
+constexpr T thetaC = 3e-5;
+constexpr T thetaS = 2e-3; // These are entirely made up; let's just take the values Josh used
 
 using vec2i = Eigen::Matrix<int, 2, 1>;
 using vec3i = Eigen::Matrix<int, 3, 1>;

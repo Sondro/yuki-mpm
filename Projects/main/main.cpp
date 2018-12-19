@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
     T n = 3;
 	T r2 = 1.0 / 2.0;
 	T k = 30;
-
+    int test = 0;
     // set up psuedo random sampling
     int seed = int(n * r2 * k);
     std::srand(seed);

@@ -3,6 +3,12 @@
 #include "globals.h"
 #include "particle.h"
 #include "gridData.h"
+
+template <typename T>
+struct SVDResult {
+    mat3 U, V, Sigma;
+};
+
 template <typename T>
 class MACGrid {
 public:
@@ -31,32 +37,20 @@ public:
             vec3 xp = p.pos;
             if (!nodeVels.inRange(xp)) { continue; }
 			vec3i gridIdx = nodeVels.cellOf(xp);
-            int offset = 2;
 
-#if DEBUG
-            T totalWeight = 0;
-#endif
-            for (int i = -offset; i <= offset; i++) {
-                for (int j = -offset; j <= offset; j++) {
-                    for (int k = -offset; k <= offset; k++) {
-                        vec3i nIdx = gridIdx + vec3i(i, j, k);
-                        if (outOfBounds(nIdx)) { continue; }
-                        vec3 xi = nIdx.cast<T>() * CELL_SIZE;
-                        T w = getWeight(xp, xi);
-#if DEBUG
-                        totalWeight += w;
-#endif
-                        // transfer the masses
-                        T m = w * p.mass;
-                        vec3 _p = w * p.mass * (p.vel + p.B * D_INV * (xi - xp));
-                        nodeMomentums(nIdx) += _p;
-                        nodeMasses(nIdx) += m;
-                    }
-                }
-            }
-#if DEBUG
-            assert(cmpT(totalWeight, "Total Weight", WEIGHT_CONSTRAINT, "1"));
-#endif
+            FOR_EACH_NEIGHBOR
+                vec3i nIdx = gridIdx + vec3i(i, j, k);
+                if (outOfBounds(nIdx)) { continue; }
+                vec3 xi = nIdx.cast<T>() * CELL_SIZE;
+                T w = getWeight(xp, xi);
+
+                // transfer the masses
+                T m = w * p.mass;
+                vec3 _p = w * p.mass * (p.vel + p.B * D_INV * (xi - xp));
+                nodeMomentums(nIdx) += _p;
+                nodeMasses(nIdx) += m;
+            END_FOR_EACH_NEIGHBOR
+
 		}
 	}
 
@@ -69,6 +63,7 @@ public:
         }
         return false;
     }
+
     void computeGridVelocities() {
         for (int i = 0; i < dims[0]; i++) {
             for (int j = 0; j < dims[1]; j++) {
@@ -89,22 +84,16 @@ public:
         for (const auto &p : particles) {
             vec3 xp = p.pos;
             if (!nodeVels.inRange(xp)) { continue; }
-            vec3i gridIdx = nodeVels.cellOf(xp);
-            int offset = 2;
 
-            for (int i = -offset; i <= offset; i++) {
-                for (int j = -offset; j <= offset; j++) {
-                    for (int k = -offset; k <= offset; k++) {
-                        vec3i nIdx = gridIdx + vec3i(i, j, k);
-                        if (outOfBounds(nIdx)) continue;
-                        vec3 xi = nIdx.cast<T>() * CELL_SIZE;
-                        vec3 wd = getWeightGradient(xp, xi);
-#if STRESS
-                        nodeForces(nIdx) += -p.vol * NeoHookeanDeltaPsi(p.F) * p.F.transpose() * wd;
-#endif
-                    }
-                }
-            }
+            vec3i gridIdx = nodeVels.cellOf(xp);
+
+            FOR_EACH_NEIGHBOR
+                vec3i nIdx = gridIdx + vec3i(i, j, k);
+                if (outOfBounds(nIdx)) continue;
+                vec3 xi = nIdx.cast<T>() * CELL_SIZE;
+                vec3 wd = getWeightGradient(xp, xi);
+                nodeForces(nIdx) += -p.vol * snowModel(p.Fe, p.Fp) * p.F.transpose() * wd;
+            END_FOR_EACH_NEIGHBOR
         }
     }
 
@@ -129,93 +118,60 @@ public:
             vec3 xp = p.pos;
             if (!nodeVels.inRange(xp)) { continue; }
             vec3i gridIdx = nodeVels.cellOf(xp);
-            int offset = 2;
 
-#if DEBUG
-            vec3 totalWeightGrad = vec3::Zero();
-#endif
             p.reset();
-            mat3 newF = mat3::Zero();
-            for (int i = -offset; i <= offset; i++) {
-                for (int j = -offset; j <= offset; j++) {
-                    for (int k = -offset; k <= offset; k++) {
-                        vec3i nIdx = gridIdx + vec3i(i, j, k);
-                        if (outOfBounds(nIdx)) continue;
-                        vec3 xi = nIdx.cast<T>() * CELL_SIZE;
-                        T w = getWeight(xp, xi);
-                        vec3 v = nodeVels(nIdx);
-                        vec3 dw = getWeightGradient(xp, xi);
-						mat3 test;
-						test(0,0) = v(0) * dw(0);
-						test(0,1) = v(0) * dw(1);
-						test(0,2) = v(0) * dw(2);
-						test(1,0) = v(1) * dw(0);
-						test(1,1) = v(1) * dw(1);
-						test(1,2) = v(1) * dw(2);
-						test(2,0) = v(2) * dw(0);
-						test(2,1) = v(2) * dw(1);
-						test(2,2) = v(2) * dw(2);
-                        newF += test;
-#if DEBUG
-                        totalWeightGrad += dw;
-#endif
-                        p.vel += w * v;
-#if APIC
-                        p.B += w * v * (xi - xp).transpose();
-#else
-                        p.B = mat3::Zero();
-#endif
-                        // Plasticity update
-                        /*
-                        auto newFeTilda = newF * p.Fp.inverse();
+            mat3 dws = mat3::Zero();
+            FOR_EACH_NEIGHBOR
+                vec3i nIdx = gridIdx + vec3i(i, j, k);
+                if (outOfBounds(nIdx)) continue;
+                vec3 xi = nIdx.cast<T>() * CELL_SIZE;
+                T w = getWeight(xp, xi);
+                vec3 v = nodeVels(nIdx);
+                vec3 dw = getWeightGradient(xp, xi);
+                mat3 result;
+                result(0,0) = v(0) * dw(0);
+                result(0,1) = v(0) * dw(1);
+                result(0,2) = v(0) * dw(2);
+                result(1,0) = v(1) * dw(0);
+                result(1,1) = v(1) * dw(1);
+                result(1,2) = v(1) * dw(2);
+                result(2,0) = v(2) * dw(0);
+                result(2,1) = v(2) * dw(1);
+                result(2,2) = v(2) * dw(2);
+                dws += result;
 
-                        Eigen::JacobiSVD<mat3> svd(newFeTilda, Eigen::ComputeFullU | Eigen::ComputeFullV);
-                        mat3 newUE = svd.matrixU();
-                        mat3 newVE = svd.matrixV();
-                        vec3 sigma = svd.singularValues();
-                        double thetaC = 3e-5;
-                        double thetaS = 2e-3; // These are entirely made up; let's just take the values Josh used
+                p.vel += w * v;
+                p.B += w * v * (xi - xp).transpose();
 
-                        for (int i = 0; i < 3; ++i) {
-                            sigma[i] = (sigma[i] < thetaC) ? thetaC : 
-                                       (sigma[i] > thetaS) ? thetaS : sigma[i];
-                        }
+            END_FOR_EACH_NEIGHBOR
 
-                        mat3 SigmaE;
-                        for (int i = 0; i < 3; ++i) {
-                            SigmaE(i, i) = sigma[i]; // Not sure about syntax
-                        }
+            // update deformation gradient
+			mat3 newF = p.F + dt * dws * p.F;
+			p.F = newF;
 
-                        p.Fe = newUE * SigmaE * newVE.transpose();
-                        p.Fp = p.Fe.inverse() * newF;
-                         */
-                    }
-                }
+            auto Fe = p.Fe;
+            auto newFe = Fe + dt * dws * Fe;
+
+            SVDResult<T> svdRes = checkedSVD(newFe);
+            mat3 Ue = svdRes.U;
+            mat3 Ve = svdRes.V;
+            mat3 Se = svdRes.Sigma;
+
+            for (int i = 0; i < 3; ++i) {
+                Se(i,i) = std::max(1.0 - thetaC, std::min(Se(i, i), 1.0 + thetaS));
             }
-#if DEBUG
-            assert(cmpVec3(totalWeightGrad, "Total Weight Gradient", ZERO_VECTOR, "Zero Vector"));
-#endif
-			mat3 defGrad = p.F + dt * newF * p.F;
-			p.F = defGrad;
-            //p.F += dt * newF * p.F;
+
+            p.Fe = Ue * Se * Ve.transpose();
+            p.Fp = Ve * Se.inverse() * Ue.transpose() * newF;
         }
     }
+
 
     void advectParticles() {
         for (auto &p : particles) {
             p.pos += p.vel * dt;
         }
     }
-
-    void handleCollisions() {
-	    for (int i = 0; i < dims[0]; ++i) {
-	        for (int k = 0; k < dims[2]; ++k) {
-	            if (nodeVels(i, 0, k)[1] < T(0)) {
-	                nodeVels(i, 0, k)[1] = 0;
-	            }
-	        }
-	    }
-	}
 
 	void setBoundaryVelocities(int thickness) {
 	    for (int i = 0; i < thickness; ++i) {
@@ -334,23 +290,59 @@ public:
     }
 
     // Incorporates plasticity and hardening effects
-    double calculatePlasticEnergyDensity(mat3 F, mat3 Fp) {
-        mat3 U, V;
-        checkedSVD(F, U, V);
-
-        mat3 R = U * V.transpose();
+    mat3 snowModel(const mat3 &Fe, const mat3 &Fp) {
+        SVDResult<T> svd = checkedSVD(Fe);
+        mat3 U = svd.U;
+        mat3 V = svd.V;
+        mat3 Re = U * V.transpose();
 
         // Initial values of mu and lambda; nu is Poisson's ratio
-        double mu0 = k / (2 * (1.0 + nu));
-        double lambda0 = (k * nu) / ((1.0 + nu) * (1.0 - (2.0 * nu)));
-        // Hardening parameter; typically a value between 3 and 10
-        double xi = 7.0;
+        T mu0 = k / (2 * (1.0 + nu));
+        T lambda0 = (k * nu) / ((1.0 + nu) * (1.0 - (2.0 * nu)));
 
-        double Jp = Fp.determinant();
-        double mu = mu0 * std::exp(xi * (1 - Jp));
-        double lambda = lambda0 * std::exp(xi * (1 - Jp));
-        double FRDet = (F - R).determinant();
-        return mu * FRDet * FRDet + 0.5 * lambda * (Jp - 1) * (Jp - 1);
+        // Hardening parameter; typically a value between 3 and 10
+        T xi = 10.0;
+
+        T Jp = Fp.determinant();
+        T mu = mu0 * std::exp(xi * (1 - Jp));
+        T lambda = lambda0 * std::exp(xi * (1 - Jp));
+
+        T FRDet = (Fe - Re).determinant();
+        T Je = Fe.determinant();
+        auto piola = (2 * mu * (Fe - Re)) +
+                (lambda * (Je - 1.0) *
+                        Je * (Fe.transpose().inverse()));
+        return piola;
+    }
+
+    SVDResult<T> checkedSVD(const mat3 &M) {
+        SVDResult<T> svdRes;
+        Eigen::JacobiSVD<mat3> svd(M, Eigen::ComputeFullU | Eigen::ComputeFullV);
+        svdRes.Sigma = mat3::Identity();
+        svdRes.Sigma(0, 0) = svd.singularValues()[0];
+        svdRes.Sigma(1, 1) = svd.singularValues()[1];
+        svdRes.Sigma(2, 2) = svd.singularValues()[2];
+
+        svdRes.U = svd.matrixU();
+        svdRes.V = svd.matrixV();
+
+        if (svdRes.U.determinant() < 0) {
+            svdRes.U.col(2) *= -1;
+            svdRes.Sigma(2, 2) *= -1;
+        }
+
+        if (svdRes.V.determinant() < 0) {
+            svdRes.V.col(2) *= -1;
+            svdRes.Sigma(2, 2) *= -1;
+        }
+
+        if (svdRes.Sigma(1, 1) > svdRes.Sigma(0, 0)) {
+            T temp = svdRes.Sigma(1, 1);
+            svdRes.Sigma(1, 1) = svdRes.Sigma(0, 0);
+            svdRes.Sigma(0, 0) = temp;
+        }
+
+        return svdRes;
     }
 
     void checkedSVD(const mat3 &F, mat3& U, mat3& V) {
@@ -508,9 +500,4 @@ public:
     GridData<vec3> nodeMomentums;
 	vec3 dims;
     int numFrames = 0;
-
-private:
-	bool checkCellDensityGreaterThan(int d) {
-
-	}
 };
