@@ -177,7 +177,9 @@ public:
 	    for (int i = 0; i < thickness; ++i) {
 	        for (int j = 0; j < dims[1]; ++j) {
 	            for (int k = 0; k < dims[2]; ++k) {
-	                nodeVels(i, j, k) = ZERO_VECTOR;
+	                vec3 normal;
+	                normal << 1, 0, 0;
+	                nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
 	            }
 	        }
 	    }
@@ -185,7 +187,9 @@ public:
 	    for (int i = dims[0] - thickness; i < dims[0]; ++i) {
             for (int j = 0; j < dims[1]; ++j) {
                 for (int k = 0; k < dims[2]; ++k) {
-                    nodeVels(i, j, k) = ZERO_VECTOR;
+                    vec3 normal;
+                    normal << -1, 0, 0;
+                    nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
                 }
             }
 	    }
@@ -193,7 +197,9 @@ public:
         for (int i = 0; i < dims[0]; ++i) {
             for (int j = 0; j < thickness; ++j) {
                 for (int k = 0; k < dims[2]; ++k) {
-                    nodeVels(i, j, k) = ZERO_VECTOR;
+                    vec3 normal;
+                    normal << 0, 1, 0;
+                    nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
                 }
             }
         }
@@ -201,7 +207,9 @@ public:
         for (int i = 0; i < dims[0]; ++i) {
             for (int j = dims[1] - thickness; j < dims[1]; ++j) {
                 for (int k = 0; k < dims[2]; ++k) {
-                    nodeVels(i, j, k) = ZERO_VECTOR;
+                    vec3 normal;
+                    normal << 0, -1, 0;
+                    nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
                 }
             }
         }
@@ -209,7 +217,9 @@ public:
         for (int i = 0; i < dims[0]; ++i) {
             for (int j = 0; j < dims[1]; ++j) {
                 for (int k = 0; k < thickness; ++k) {
-                    nodeVels(i, j, k) = ZERO_VECTOR;
+                    vec3 normal;
+                    normal << 0, 0, 1;
+                    nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
                 }
             }
         }
@@ -217,7 +227,36 @@ public:
         for (int i = 0; i < dims[0]; ++i) {
             for (int j = 0; j < dims[1]; ++j) {
                 for (int k = dims[2] - thickness; k < dims[2]; ++k) {
-                    nodeVels(i, j, k) = ZERO_VECTOR;
+                    vec3 normal;
+                    normal << 0, 0, -1;
+                    nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
+                }
+            }
+        }
+
+        // collision with sphere
+        for (int i = 0; i < dims[0]; ++i) {
+            for (int j = 0; j < dims[1]; ++j) {
+                for (int k = 0; k < dims[2]; ++k) {
+                    // test if cell is inside a sphere of radius 1 centered at {0, X_SIZE / 2, Z_SIZE / 2}
+                    // Get world position of cell
+                    vec3 pos;
+                    pos << i * CELL_SIZE, j * CELL_SIZE, k * CELL_SIZE;
+                    vec3 center;
+                    center << X_SIZE / 2, Y_SIZE / 2, Z_SIZE / 2;
+                    if ((pos - center).norm() < 0.25) {
+                        // normal is pos normalize
+                        vec3 normal = pos - center;
+                        normal.normalize();
+                        T vn = normal.dot(nodeVels(i, j, k));
+                        T friction = 0.7;
+                        vec3 vt = nodeVels(i, j, k) - vn * normal;
+                        vec3 vt_n = vt;
+                        vt_n.normalize();
+                        vec3 newV = vt + friction * vn * vt_n;
+                        pos.normalize();
+                        nodeVels(i, j, k) =  newV;
+                    }
                 }
             }
         }
@@ -301,7 +340,7 @@ public:
         T lambda0 = (k * nu) / ((1.0 + nu) * (1.0 - (2.0 * nu)));
 
         // Hardening parameter; typically a value between 3 and 10
-        T xi = 10.0;
+        T xi = 3.0;
 
         T Jp = Fp.determinant();
         T mu = mu0 * std::exp(xi * (1 - Jp));

@@ -25,9 +25,9 @@ constexpr T INV_CELL_SIZE = 1.0 / CELL_SIZE;
 // The extent of grid (grid goes from {0, 0, 0} to {X, Y, Z}
 // Along with the cell size, determines how many cells should
 // be in the grid
-constexpr T X_SIZE = 3;
+constexpr T X_SIZE = 3.5;
 constexpr T Y_SIZE = 7;
-constexpr T Z_SIZE = 3;
+constexpr T Z_SIZE = 3.5;
 
 constexpr int X_CELL_COUNT = static_cast<int>(X_SIZE / CELL_SIZE);
 constexpr int Y_CELL_COUNT = static_cast<int>(Y_SIZE / CELL_SIZE);
@@ -47,11 +47,11 @@ for (int k = -offset; k <= offset; k++) {
 
 constexpr T dt = 0.0001;
 constexpr T k = 100;
-constexpr T nu = .3;
+constexpr T nu = .2;
 constexpr T V0 = 1e-3;
 
-constexpr T thetaC = 3e-5;
-constexpr T thetaS = 2e-3; // These are entirely made up; let's just take the values Josh used
+constexpr T thetaC = 2.5e-2;
+constexpr T thetaS = 7.5e-3; // These are entirely made up; let's just take the values Josh used
 
 using vec2i = Eigen::Matrix<int, 2, 1>;
 using vec3i = Eigen::Matrix<int, 3, 1>;
