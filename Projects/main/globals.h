@@ -14,9 +14,6 @@
 constexpr int dim = 3;
 using T = double;
 
-constexpr T DENSITY = 2.0;
-constexpr T VOLUME = 1.0;
-
 // The length, width, and height of each cell
 // Each cell is a cube
 constexpr T CELL_SIZE = 0.1;
@@ -54,6 +51,13 @@ for (int j = -offset; j <= offset; j++) { \
 for (int k = -offset; k <= offset; k++) {
 
 #define END_FOR_EACH_NEIGHBOR }}}
+
+#define FOR_EACH_NODE for (int i = 0; i < dims[0]; i++) { \
+for (int j = 0; j < dims[1]; j++) { \
+for (int k = 0; k < dims[2]; k++) {
+
+
+#define END_FOR_EACH_NODE }}}
 
 constexpr T dt = 0.0001;
 constexpr T k = 1000;
