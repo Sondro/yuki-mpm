@@ -50,23 +50,8 @@ public:
                 nodeMomentums(nIdx) += _p;
                 nodeMasses(nIdx) += m;
             });
-
-            FOR_EACH_NEIGHBOR
-                vec3i nIdx = gridIdx + vec3i(i, j, k);
-                if (outOfBounds(nIdx)) { continue; }
-                vec3 xi = nIdx.cast<T>() * CELL_SIZE;
-                T w = getWeight(xp, xi);
-
-                // transfer the masses
-                T m = w * p.mass;
-                vec3 _p = w * p.mass * (p.vel + p.B * D_INV * (xi - xp));
-                nodeMomentums(nIdx) += _p;
-                nodeMasses(nIdx) += m;
-            END_FOR_EACH_NEIGHBOR
-
 		}
 	}
-
 
     bool outOfBounds(vec3i idx) {
         for (int m = 0; m < 3; m++) {
@@ -78,13 +63,13 @@ public:
     }
 
     void computeGridVelocities() {
-        FOR_EACH_NODE
-            if (nodeMasses(i, j, k) == 0) {
-                nodeVels(i, j, k) = vec3::Zero();
-            } else {
-                nodeVels(i, j, k) = nodeMomentums(i, j, k) / nodeMasses(i, j, k);
-            }
-        END_FOR_EACH_NODE
+	    foreach_node(dims, [&](int i, int j, int k) {
+	        if (nodeMasses(i, j, k) == 0) {
+	            nodeVels(i, j, k) = vec3::Zero();
+	        } else {
+	            nodeVels(i, j, k) = nodeMomentums(i, j, k) / nodeMasses(i, j, k);
+	        }
+	    });
     }
 
     void computeGridForces() {
@@ -96,24 +81,25 @@ public:
 
             vec3i gridIdx = nodeVels.cellOf(xp);
 
-            FOR_EACH_NEIGHBOR
+            foreach_neighbor(2, [&](int i, int j, int k) {
                 vec3i nIdx = gridIdx + vec3i(i, j, k);
-                if (outOfBounds(nIdx)) continue;
+                if (outOfBounds(nIdx)) { return; }
                 vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                 vec3 wd = getWeightGradient(xp, xi);
-                nodeForces(nIdx) += -p.vol * snowModel(p.Fe, p.Fp) * p.F.transpose() * wd;
-            END_FOR_EACH_NEIGHBOR
+                //nodeForces(nIdx) += -p.vol * snowModel(p.Fe, p.Fp) * p.F.transpose() * wd;
+                nodeForces(nIdx) += -p.vol * FixedCorotated(p.F) * p.F.transpose() * wd;
+            });
         }
     }
 
 
     void applyGridForces() {
-        FOR_EACH_NODE
-            if (nodeMasses(i, j, k) != 0) {
-                nodeVels(i, j, k) += dt * g;
-                nodeVels(i, j, k) +=  dt * nodeForces(i, j, k) / nodeMasses(i, j, k);
-            }
-        END_FOR_EACH_NODE
+	    foreach_node(dims, [&](int i, int j, int k) {
+	       if (nodeMasses(i, j, k) != 0) {
+	           nodeVels(i, j, k) += dt * g;
+	           nodeVels(i, j, k) += dt * nodeForces(i, j, k) / nodeMasses(i, j, k);
+	       }
+	    });
     }
 
     void gridToParticle() {
@@ -124,9 +110,9 @@ public:
 
             p.reset();
             mat3 dws = mat3::Zero();
-            FOR_EACH_NEIGHBOR
+            foreach_neighbor(2, [&](int i, int j, int k) {
                 vec3i nIdx = gridIdx + vec3i(i, j, k);
-                if (outOfBounds(nIdx)) continue;
+                if (outOfBounds(nIdx)) { return; }
                 vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                 T w = getWeight(xp, xi);
                 vec3 v = nodeVels(nIdx);
@@ -136,7 +122,7 @@ public:
                 // compute the weighted particle velocities
                 p.vel += w * v;
                 p.B += w * v * (xi - xp).transpose();
-            END_FOR_EACH_NEIGHBOR
+            });
 
             // update deformation gradient
 			mat3 newF = p.F + dt * dws * p.F;
@@ -233,10 +219,11 @@ public:
             }
         }
 
+#define COLLIDE
 #ifdef COLLIDE
         vec3 center;
-        center << X_SIZE / 2, Y_SIZE / 2, Z_SIZE / 2;
-        sphereCollision(center, radius, 0.7);
+        center << X_SIZE / 2, 2, Z_SIZE / 2;
+        sphereCollision(center, .25, 0.7);
 #endif
 	}
 
@@ -260,28 +247,21 @@ public:
 	}
 
     void sphereCollision(vec3 center, T radius, T friction) {
-        // collision with sphere
-        for (int i = 0; i < dims[0]; ++i) {
-            for (int j = 0; j < dims[1]; ++j) {
-                for (int k = 0; k < dims[2]; ++k) {
-                    // position of the node
-                    vec3 pos;
-                    pos << i * CELL_SIZE, j * CELL_SIZE, k * CELL_SIZE;
+	    foreach_node(dims, [&](int i, int j, int k) {
+	       vec3 pos;
+	       pos << i * CELL_SIZE, j * CELL_SIZE, k * CELL_SIZE;
 
-                    // correct node's vel if the node is inside of the sphere
-                    if (sphereSDF(pos, center, radius) <= 0.0) {
-                        vec3 normal = sphereNormal(pos, center, radius);
-                        T vn = normal.dot(nodeVels(i, j, k));
-                        vec3 vt = nodeVels(i, j, k) - vn * normal;
-                        vec3 vt_n = vt;
-                        vt_n.normalize();
-                        vec3 newV = vt + friction * vn * vt_n;
-                        pos.normalize();
-                        nodeVels(i, j, k) =  newV;
-                    }
-                }
-            }
-        }
+	       if (sphereSDF(pos, center, radius) <= 0.0) {
+	           vec3 normal = sphereNormal(pos, center, radius);
+	           T vn = normal.dot(nodeVels(i, j, k));
+	           vec3 vt = nodeVels(i, j, k) - vn * normal;
+	           vec3 vt_n = vt;
+	           vt_n.normalize();
+	           vec3 newV = vt + friction * vn * vt_n;
+	           pos.normalize();
+	           nodeVels(i, j, k) = newV;
+	       }
+	    });
     }
 
     void writeFrame() {

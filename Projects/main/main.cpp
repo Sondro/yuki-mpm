@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
     T DENSITY = 2.0;
     T VOLUME = 1.0;
 
-    bool loadSampledMesh = true;
+    bool loadSampledMesh = false;
     bool loadSamples = true;
 	Sampler<T> *s;
 	PointList samples;
@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
         VOLUME = computeMeshVolume("models/bunny.obj");
     }
 	else if (loadSamples) {
-        samples = loadSamplesFromFile("poisson_unit_cube_578samples.bgeo");
+        samples = loadSamplesFromFile("poisson_unit_cube_1157samples.bgeo");
 
 	}
 	if (!loadSamples) {
