@@ -10,6 +10,8 @@ file(GLOB MPM_SRC
 	"*.h"
 	"*.cpp")
 
+message(${MPM_SRC})
+
 add_cispba_executable(main ${MPM_SRC})
 target_include_directories(main PUBLIC ${CISPBA_SOURCE_DIR}/tetgen/)
 target_include_directories(main PUBLIC ${CISPBA_SOURCE_DIR}/voro++/include)

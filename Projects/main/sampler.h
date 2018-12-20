@@ -1,6 +1,8 @@
 #pragma once
 
 #include "globals.h"
+#include "KDTree.h"
+#include "tiny_obj_loader.h"
 
 template <typename T>
 
@@ -384,6 +386,126 @@ public:
     // number of total samples generated in this sampler
     int numSamples = 0;
 
-    // grid full of points in domain [0, 1)
     SamplerGrid<T> unitCube;
 };
+
+inline PointList loadSamplesFromFile(const std::string &filename) {
+    std::cout << "Loading samples from " << filename << "\n";
+    PointList samples;
+    Partio::ParticlesDataMutable *parts = Partio::read(filename.c_str());
+    Partio::ParticleAttribute posAttr;
+    if (!parts->attributeInfo("position", posAttr)) {
+        std::cerr << "Invalid sample set\n";
+    }
+
+    for (int i = 0; i < parts->numParticles(); ++i) {
+        const float *pos = parts->data<float>(posAttr, i);
+        vec3 newPt;
+        newPt << pos[0], pos[1], pos[2];
+        samples.push_back(newPt);
+    }
+    std::cout << "Loaded " << samples.size() << " samples\n";
+    return samples;
+}
+
+inline PointList sampledMesh(PointList &sampledCube, const std::string &objPath) {
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string err;
+    std::string basedir = "";
+    PointList vertices;
+    PointList samples;
+    vec3 min, max;
+    min << INFINITY, INFINITY, INFINITY;
+    max << -INFINITY, -INFINITY, -INFINITY;
+    Bounds bounds(min, max);
+
+    if (objPath.find_last_of("/\\") != std::string::npos) {
+        basedir = objPath.substr(0, objPath.find_last_of("/\\"));
+    }
+
+    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, objPath.c_str(), basedir.c_str());
+    if (!err.empty()) {
+        std::cerr << err << std::endl;
+    }
+
+    if (!ret) {
+        std::cerr << "Skipping " << objPath << std::endl;
+        return vertices;
+    }
+
+    std::vector<Triangle *> triangles;
+    KDNode *kdtree = nullptr;
+    for (size_t s = 0; s < shapes.size(); s++) {
+        // Loop over faces(polygon)
+        size_t index_offset = 0;
+        for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+            size_t fv = 3; // all objs should have only triangles
+            vec3 pts[3];
+            // Loop over vertices in the face.
+            for (size_t v = 0; v < fv; v++) {
+                // access to vertex
+                tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+                tinyobj::real_t vx = attrib.vertices[3 * idx.vertex_index + 0];
+                tinyobj::real_t vy = attrib.vertices[3 * idx.vertex_index + 1];
+                tinyobj::real_t vz = attrib.vertices[3 * idx.vertex_index + 2];
+                vec3 pt;
+                pt << vx, vy, vz;
+                vertices.push_back(pt);
+                bounds = Union(bounds, pt);
+                pts[v] = pt;
+            }
+            Triangle *t = new Triangle();
+            t->pts[0] = pts[0];
+            t->pts[1] = pts[1];
+            t->pts[2] = pts[2];
+            Bounds t_bounds;
+            t_bounds = Union(t_bounds, pts[0]);
+            t_bounds = Union(t_bounds, pts[1]);
+            t_bounds = Union(t_bounds, pts[2]);
+            t->bounds = t_bounds;
+            //triangles.push_back(new Triangle(pts[0], pts[1], pts[2]));
+            triangles.push_back(t);
+            index_offset += fv;
+        }
+    }
+    kdtree = new KDNode(triangles, 0);
+    bounds.min[0] = std::floor(bounds.min[0]);
+    bounds.min[1] = std::floor(bounds.min[1]);
+    bounds.min[2] = std::floor(bounds.min[2]);
+
+    bounds.max[0] = std::ceil(bounds.max[0]);
+    bounds.max[1] = std::ceil(bounds.max[1]);
+    bounds.max[2] = std::ceil(bounds.max[2]);
+
+    vec3 mdpt = bounds.Diagonal() / 2.0;
+
+    for (int i = bounds.min[0]; i < bounds.max[0]; i++) {
+        for (int j = bounds.min[1]; j < bounds.max[1]; j++) {
+            for (int k = bounds.min[2]; k < bounds.max[2]; k++) {
+                for (vec3 &pt : sampledCube) {
+                    vec3 offset;
+                    offset << i, j, k;
+                    // TODO: CHECK IF THE SAMPLE pt + offset IS INSIDE THE MESH
+                    // IF YES, ADD, OTHERWISE SKIP
+                    // POINT IS INSIDE MESH IF COUNTING INTERSECTIONS with r is odd
+                    vec3 rayDir = pt + offset - mdpt;
+                    rayDir.normalize();
+                    Ray r1 { pt + offset, rayDir };
+                    vec3 randRayDir = pt + offset;
+                    randRayDir.normalize();
+                    Ray r2 { pt + offset, randRayDir };
+                    std::unordered_set<Triangle *> checked;
+                    std::unordered_set<Triangle *> checked2;
+                    if ((kdtree->countIntersections(r1, checked) % 2 == 1) &&
+                        (kdtree->countIntersections(r2, checked2) % 2 == 1)) {
+                        samples.push_back(pt + offset);
+                    }
+
+                }
+            }
+        }
+    }
+    return samples;
+}

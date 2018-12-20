@@ -3,19 +3,19 @@
 #include <chrono>
 #include "simulation.h"
 
-Simulation::Simulation(int i, int j, int k, vec3 transform, std::vector<Particle<T>> particles, double seconds, double fps) :
+Simulation::Simulation(int i, int j, int k, mat4 transform, std::vector<Particle<T>> particles, double seconds, double fps) :
 	grid(i, j, k),
 	seconds(seconds),
 	fps(fps),
 	frames(fps * seconds) {
     grid.particles = particles;
-    mat3 rot;
-    rot << 0.7071068, -0.7071068, 0,
-		   0.7071068, 0.7071068, 0,
-		   0, 0, 1;
     for (auto &p : grid.particles) {
-		p.pos = rot * p.pos;
-        p.pos += transform;
+        vec4 tmp;
+        tmp << p.pos[0], p.pos[1], p.pos[2], 1.0;
+        tmp = transform * tmp;
+        p.pos[0] = tmp[0];
+        p.pos[1] = tmp[1];
+        p.pos[2] = tmp[2];
     }
 }
 
