@@ -235,6 +235,7 @@ public:
         }
 
         // collision with sphere
+        /*
         for (int i = 0; i < dims[0]; ++i) {
             for (int j = 0; j < dims[1]; ++j) {
                 for (int k = 0; k < dims[2]; ++k) {
@@ -244,10 +245,8 @@ public:
                     pos << i * CELL_SIZE, j * CELL_SIZE, k * CELL_SIZE;
                     vec3 center;
                     center << X_SIZE / 2, Y_SIZE / 2, Z_SIZE / 2;
-                    if ((pos - center).norm() < 0.25) {
-                        // normal is pos normalize
-                        vec3 normal = pos - center;
-                        normal.normalize();
+                    if (sphereSDF(pos, center, 0.25) <= 0.0) {
+                        vec3 normal = sphereNormal(pos, center, 0.25);
                         T vn = normal.dot(nodeVels(i, j, k));
                         T friction = 0.7;
                         vec3 vt = nodeVels(i, j, k) - vn * normal;
@@ -260,6 +259,23 @@ public:
                 }
             }
         }
+        */
+	}
+
+	T sphereSDF(vec3 pos, vec3 center, T length) {
+	    return (pos - center).norm() - length;
+	}
+
+	vec3 sphereNormal(vec3 p, vec3 center, T length) {
+	    vec3 normal;
+	    T x = p[0];
+	    T y = p[1];
+	    T z = p[2];
+	    normal << sphereSDF(vec3(x + EPSILON, y, z), center, length) - sphereSDF(vec3(x - EPSILON, y, z), center, length),
+                    sphereSDF(vec3(x, y + EPSILON, z), center, length) - sphereSDF(vec3(x, y - EPSILON, z), center, length),
+                    sphereSDF(vec3(x, y, z  + EPSILON), center, length) - sphereSDF(vec3(x, y, z - EPSILON), center, length);
+        normal.normalize();
+	    return normal;
 	}
 
     void writeFrame() {
@@ -340,7 +356,7 @@ public:
         T lambda0 = (k * nu) / ((1.0 + nu) * (1.0 - (2.0 * nu)));
 
         // Hardening parameter; typically a value between 3 and 10
-        T xi = 3.0;
+        T xi = 10.0;
 
         T Jp = Fp.determinant();
         T mu = mu0 * std::exp(xi * (1 - Jp));

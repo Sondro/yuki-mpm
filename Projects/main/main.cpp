@@ -7,16 +7,17 @@
 
 int main(int argc, char **argv) {
     T n = 3;
-	T r2 = 1.0 / 2.0;
+	T r2 = 1.0 / 8.0;
 	T k = 30;
     // set up psuedo random sampling
     int seed = int(n * r2 * k);
     std::srand(seed);
-    bool loadSampledMesh = true;
+    bool loadSampledMeshFromFile = true;
+    bool createSampledMesh = true;
     bool loadSamples = true;
 	Sampler<T> *s;
 	PointList samples;
-    if (loadSampledMesh) {
+    if (loadSampledMeshFromFile) {
         samples = loadSamplesFromFile("bunny.bgeo");
         Bounds bounds;
 
@@ -27,8 +28,11 @@ int main(int argc, char **argv) {
         for (auto &p : samples) {
             p -= bounds.min;
         }
-    }
-	else if (loadSamples) {
+    } else if (createSampledMesh) {
+    	s = new Sampler<T>(n, r2, k);
+    	samples = s->unitCube.getAllSamples();
+		samples = sampledMesh(samples, "bunny.obj");
+    } else if (loadSamples) {
 		// Loading samples
 		s = new Sampler<T>(n, r2 / 2.0, k, "poisson_unit_cube_578samples.bgeo");
 		samples = s->unitCube.getAllSamples();
@@ -56,7 +60,7 @@ int main(int argc, char **argv) {
         transform(i, 3) = translate[i];
         transform(i, i) = scale[i];
     }
-
+	std::cout << "Total number of samples: " << samples.size() << "\n";
     s->saveSamples(samples, "samples.bgeo");
     std::vector<Particle<T>> particles;
     for (const auto &sample : samples) {
