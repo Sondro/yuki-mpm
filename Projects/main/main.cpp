@@ -71,7 +71,8 @@ int main(int argc, char **argv) {
     T VOLUME = 1.0;
 
     bool loadSampledMesh = false;
-    bool loadSamples = true;
+    bool loadSamples = false;
+    bool loadSampledSphere = true;
 	Sampler<T> *s;
 	PointList samples;
     if (loadSampledMesh) {
@@ -94,8 +95,38 @@ int main(int argc, char **argv) {
 	else if (loadSamples) {
         samples = loadSamplesFromFile("poisson_unit_cube_1157samples.bgeo");
 
+	} 
+	else if (loadSampledSphere) {
+		//samples = loadSamplesFromFile("poisson_unit_cube_1157samples.bgeo");
+        // set up sampling parameters
+        T n = 3;
+        T r2 = 1.0 / 3.0;
+        T k = 30;
+
+        // set up psuedo random sampling
+        int seed = int(n * r2 * k);
+        std::srand(seed);
+
+        // Generating samples
+        s = new Sampler<T>(n, r2 / 2.0, k);
+        PointList cubeSamples = s->unitCube.getAllSamples();
+
+        for (auto &p : cubeSamples) {
+            vec3 center;
+            center << 0.5, 0.5, 0.5;
+            if (sphereSDF(p, center, 0.5) <= 0.0) {
+                samples.push_back(p);
+                vec3 higherBall = p;
+
+                // add second sample for higher ball
+                higherBall[1] += (Y_CELL_COUNT * 2 * CELL_SIZE) - 2;
+                samples.push_back(higherBall);
+            }
+        }
+        std::string size = std::to_string(samples.size());
+        s->saveSamples(samples, "models/sphere_" + size + "samples.bgeo");
 	}
-	if (!loadSamples) {
+	else {
         // set up sampling parameters
         T n = 3;
         T r2 = 1.0 / 2.0;
@@ -108,7 +139,6 @@ int main(int argc, char **argv) {
 		// Generating samples
 		s = new Sampler<T>(n, r2 / 2.0, k);
 		samples = s->unitCube.getAllSamples();
-
 	}
 
     vec3i dim(X_CELL_COUNT, Y_CELL_COUNT, Z_CELL_COUNT);
@@ -117,7 +147,8 @@ int main(int argc, char **argv) {
     mat4 transform = mat4::Identity();
 
     vec3 translate, scale;
-    translate << 1.5, 5.5, 1.5;
+
+    translate << (X_CELL_COUNT / 2) * CELL_SIZE - 0.25, 0, (Z_CELL_COUNT / 2) * CELL_SIZE - 0.25;
     scale << 0.5, 0.5, 0.5;
 
     for (int i = 0; i < 3; i++) {

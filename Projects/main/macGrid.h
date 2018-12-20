@@ -4,6 +4,27 @@
 #include "particle.h"
 #include "gridData.h"
 
+// Signed distance function defining a sphere centered at "center"
+inline T sphereSDF(vec3 pos, vec3 center, T length) {
+    return (pos - center).norm() - length;
+}
+
+// Compute surface normal of a sphere at a point
+inline vec3 sphereNormal(vec3 p, vec3 center, T length) {
+    vec3 normal;
+    T x = p[0];
+    T y = p[1];
+    T z = p[2];
+    normal << sphereSDF(vec3(x + EPSILON, y, z), center, length) -
+              sphereSDF(vec3(x - EPSILON, y, z), center, length),
+            sphereSDF(vec3(x, y + EPSILON, z), center, length) -
+            sphereSDF(vec3(x, y - EPSILON, z), center, length),
+            sphereSDF(vec3(x, y, z  + EPSILON), center, length) -
+            sphereSDF(vec3(x, y, z - EPSILON), center, length);
+    normal.normalize();
+    return normal;
+}
+
 template <typename T>
 struct SVDResult {
     mat3 U, V, Sigma;
@@ -89,8 +110,8 @@ public:
                 vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                 vec3 wd = getWeightGradient(xp, xi);
                 // Compute forces, incorporating plastic deformation
-                //nodeForces(nIdx) += -p.vol * snowModel(p.Fe, p.Fp) * p.F.transpose() * wd;
-                nodeForces(nIdx) += -p.vol * FixedCorotated(p.F) * p.F.transpose() * wd;
+                nodeForces(nIdx) += -p.vol * snowModel(p.Fe, p.Fp) * p.F.transpose() * wd;
+                //nodeForces(nIdx) += -p.vol * FixedCorotated(p.F) * p.F.transpose() * wd;
             });
         }
     }
@@ -101,7 +122,8 @@ public:
 	       if (nodeMasses(i, j, k) != 0) {
 	           // dv due to gravity
 	           nodeVels(i, j, k) += dt * g;
-	           // dev due to all other forces
+	           
+               // dv due to all other forces
 	           nodeVels(i, j, k) += dt * nodeForces(i, j, k) / nodeMasses(i, j, k);
 	       }
 	    });
@@ -231,27 +253,6 @@ public:
         center << X_SIZE / 2, 2, Z_SIZE / 2;
         sphereCollision(center, .25, 0.7);
 #endif
-	}
-
-	// Signed distance function defining a sphere centered at "center"
-	T sphereSDF(vec3 pos, vec3 center, T length) {
-	    return (pos - center).norm() - length;
-	}
-
-	// Compute surface normal of a sphere at a point
-	vec3 sphereNormal(vec3 p, vec3 center, T length) {
-	    vec3 normal;
-	    T x = p[0];
-	    T y = p[1];
-	    T z = p[2];
-	    normal << sphereSDF(vec3(x + EPSILON, y, z), center, length) -
-                    sphereSDF(vec3(x - EPSILON, y, z), center, length),
-                  sphereSDF(vec3(x, y + EPSILON, z), center, length) -
-                    sphereSDF(vec3(x, y - EPSILON, z), center, length),
-                  sphereSDF(vec3(x, y, z  + EPSILON), center, length) -
-                    sphereSDF(vec3(x, y, z - EPSILON), center, length);
-        normal.normalize();
-	    return normal;
 	}
 
 	// Handle collision with a rigid sphere
@@ -510,3 +511,5 @@ public:
 	vec3 dims;
     int numFrames = 0;
 };
+
+
