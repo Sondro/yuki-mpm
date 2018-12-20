@@ -12,6 +12,7 @@ int main(int argc, char **argv) {
     // set up psuedo random sampling
     int seed = int(n * r2 * k);
     std::srand(seed);
+
     bool loadSampledMesh = true;
     bool loadSamples = true;
 	Sampler<T> *s;

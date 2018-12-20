@@ -46,10 +46,10 @@ for (int k = -offset; k <= offset; k++) {
 #define END_FOR_EACH_NEIGHBOR }}}
 
 constexpr T dt = 0.0001;
-constexpr T k = 100;
+constexpr T k = 1000;
 constexpr T nu = .2;
 constexpr T V0 = 1e-3;
-
+constexpr T xi_hardness = 10.0;
 constexpr T thetaC = 2.5e-2;
 constexpr T thetaS = 7.5e-3;
 

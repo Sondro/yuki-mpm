@@ -340,10 +340,8 @@ public:
         T lambda0 = (k * nu) / ((1.0 + nu) * (1.0 - (2.0 * nu)));
 
         // Hardening parameter; typically a value between 3 and 10
-        T xi = 3.0;
-
         T Jp = Fp.determinant();
-        T mu = mu0 * std::exp(xi * (1 - Jp));
+        T mu = mu0 * std::exp(xi_hardness * (1 - Jp));
         T lambda = lambda0 * std::exp(xi * (1 - Jp));
 
         T FRDet = (Fe - Re).determinant();
