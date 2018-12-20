@@ -1,4 +1,5 @@
 # MPM
+An implementation of the material point method, used to simulate snow.
 
 # Sources
 MPM Course Notes (Jiang et. al., 2016)
