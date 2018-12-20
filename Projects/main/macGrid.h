@@ -359,7 +359,7 @@ public:
         T xi = 10.0;
 
         T Jp = Fp.determinant();
-        T mu = mu0 * std::exp(xi * (1 - Jp));
+        T mu = mu0 * std::exp(xi_hardness * (1 - Jp));
         T lambda = lambda0 * std::exp(xi * (1 - Jp));
 
         T FRDet = (Fe - Re).determinant();
