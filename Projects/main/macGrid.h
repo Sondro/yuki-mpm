@@ -38,6 +38,7 @@ public:
             if (!nodeVels.inRange(xp)) { continue; }
 			vec3i gridIdx = nodeVels.cellOf(xp);
 
+			// Loop over a 2x2x2 neighborhood of nodes surrounding the current particle
             foreach_neighbor(2, [&](int i, int j, int k) {
                 vec3i nIdx = gridIdx + vec3i(i, j, k);
                 if (outOfBounds(nIdx)) { return; }
@@ -64,7 +65,8 @@ public:
 
     void computeGridVelocities() {
 	    foreach_node(dims, [&](int i, int j, int k) {
-	        if (nodeMasses(i, j, k) == 0) {
+            // Nodes that have a mass of 0 do not contribute degrees of freedom to the simulation
+            if (nodeMasses(i, j, k) == 0) {
 	            nodeVels(i, j, k) = vec3::Zero();
 	        } else {
 	            nodeVels(i, j, k) = nodeMomentums(i, j, k) / nodeMasses(i, j, k);
@@ -86,17 +88,20 @@ public:
                 if (outOfBounds(nIdx)) { return; }
                 vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                 vec3 wd = getWeightGradient(xp, xi);
+                // Compute forces, incorporating plastic deformation
                 //nodeForces(nIdx) += -p.vol * snowModel(p.Fe, p.Fp) * p.F.transpose() * wd;
                 nodeForces(nIdx) += -p.vol * FixedCorotated(p.F) * p.F.transpose() * wd;
             });
         }
     }
 
-
+    // Increment velocities appropriately
     void applyGridForces() {
 	    foreach_node(dims, [&](int i, int j, int k) {
 	       if (nodeMasses(i, j, k) != 0) {
+	           // dv due to gravity
 	           nodeVels(i, j, k) += dt * g;
+	           // dev due to all other forces
 	           nodeVels(i, j, k) += dt * nodeForces(i, j, k) / nodeMasses(i, j, k);
 	       }
 	    });
@@ -119,38 +124,38 @@ public:
                 vec3 dw = getWeightGradient(xp, xi);
                 dws += v * dw.transpose();
 
-                // compute the weighted particle velocities
+                // Compute weighted particle velocities
                 p.vel += w * v;
+                // Compute B matrix, as specified by the APIC method
                 p.B += w * v * (xi - xp).transpose();
             });
 
-            // update deformation gradient
+            // Update deformation gradient
 			mat3 newF = p.F + dt * dws * p.F;
 			p.F = newF;
 
-            // evolve the elastic deformation gradient
+            // Evolve the elastic deformation gradient
             auto Fe = p.Fe;
             auto newFe = Fe + dt * dws * Fe;
 
-            // perform SVD decomposition on elastic deformation gradient
+            // Perform SVD decomposition on elastic deformation gradient
             SVDResult<T> svdRes = checkedSVD(newFe);
             mat3 Ue = svdRes.U;
             mat3 Ve = svdRes.V;
             mat3 Se = svdRes.Sigma;
 
-            // clamp the singular values using snow parameters
+            // Clamp the singular values using snow parameters
             for (int i = 0; i < 3; ++i) {
                 Se(i,i) = std::max(1.0 - thetaC, std::min(Se(i, i), 1.0 + thetaS));
             }
 
-            // recompute elastic deformation gradient based on clamped values
+            // Recompute elastic deformation gradient based on clamped values
             p.Fe = Ue * Se * Ve.transpose();
 
-            // compute the plastic deformation gradient
+            // Compute the plastic deformation gradient
             p.Fp = Ve * Se.inverse() * Ue.transpose() * newF;
         }
     }
-
 
     void advectParticles() {
         for (auto &p : particles) {
@@ -158,6 +163,7 @@ public:
         }
     }
 
+    // Pad the inside boundary of the grid, imposing a no-slip condition
 	void setBoundaryVelocities(int thickness) {
 	    for (int i = 0; i < thickness; ++i) {
 	        for (int j = 0; j < dims[1]; ++j) {
@@ -227,10 +233,12 @@ public:
 #endif
 	}
 
+	// Signed distance function defining a sphere centered at "center"
 	T sphereSDF(vec3 pos, vec3 center, T length) {
 	    return (pos - center).norm() - length;
 	}
 
+	// Compute surface normal of a sphere at a point
 	vec3 sphereNormal(vec3 p, vec3 center, T length) {
 	    vec3 normal;
 	    T x = p[0];
@@ -246,12 +254,15 @@ public:
 	    return normal;
 	}
 
+	// Handle collision with a rigid sphere
     void sphereCollision(vec3 center, T radius, T friction) {
 	    foreach_node(dims, [&](int i, int j, int k) {
-	       vec3 pos;
-	       pos << i * CELL_SIZE, j * CELL_SIZE, k * CELL_SIZE;
+	        // Position of the node
+	        vec3 pos;
+            pos << i * CELL_SIZE, j * CELL_SIZE, k * CELL_SIZE;
 
-	       if (sphereSDF(pos, center, radius) <= 0.0) {
+            // Correct node's vel if the node is inside of the sphere
+            if (sphereSDF(pos, center, radius) <= 0.0) {
 	           vec3 normal = sphereNormal(pos, center, radius);
 	           T vn = normal.dot(nodeVels(i, j, k));
 	           vec3 vt = nodeVels(i, j, k) - vn * normal;
@@ -264,6 +275,7 @@ public:
 	    });
     }
 
+    // Write the current frame to a BGEO file using PartIO
     void writeFrame() {
         Partio::ParticlesDataMutable *parts = Partio::create();
         Partio::ParticleAttribute posH;
@@ -288,6 +300,7 @@ public:
         numFrames++;
     }
 
+    // Main algorithm
     void stepSimulation() {
         particleToGrid();
         computeGridVelocities();
@@ -298,6 +311,7 @@ public:
         advectParticles();
     }
 
+    // Elastic model (for testing purposes only)
     mat3 FixedCorotated(mat3 F) {
         SVDResult<T> svd = checkedSVD(F);
         mat3 U = svd.U;
@@ -320,12 +334,14 @@ public:
         JFinvT(2, 2) = F(0, 0) * F(1, 1) - F(0, 1) * F(1, 0);
         double J = F.determinant();
 
+        // First Piola-Kirchoff stress
         mat3 P = 2 * mu * (F - R) + lambda * (J - 1.f) * JFinvT;
 
         return P;
     }
 
-    // Incorporates plasticity and hardening effects
+    // Incorporates plasticity and hardening effects as described
+    // Reference: "A material point method for snow simulation" - Stomakhin et. al. (2013)
     mat3 snowModel(const mat3 &Fe, const mat3 &Fp) {
         SVDResult<T> svd = checkedSVD(Fe);
         mat3 U = svd.U;
@@ -351,6 +367,7 @@ public:
         return piola;
     }
 
+    // Compute the singular value decomposition of a matrix
     SVDResult<T> checkedSVD(const mat3 &M) {
         SVDResult<T> svdRes;
         Eigen::JacobiSVD<mat3> svd(M, Eigen::ComputeFullU | Eigen::ComputeFullV);
@@ -362,6 +379,7 @@ public:
         svdRes.U = svd.matrixU();
         svdRes.V = svd.matrixV();
 
+		// Ensure the rotation matrices are proper and all singular values are positive
         if (svdRes.U.determinant() < 0) {
             svdRes.U.col(2) *= -1;
             svdRes.Sigma(2, 2) *= -1;
@@ -372,6 +390,7 @@ public:
             svdRes.Sigma(2, 2) *= -1;
         }
 
+		// Ensure the singular values are ordered in decreasing order
         if (svdRes.Sigma(1, 1) > svdRes.Sigma(0, 0)) {
             T temp = svdRes.Sigma(1, 1);
             svdRes.Sigma(1, 1) = svdRes.Sigma(0, 0);
@@ -426,6 +445,7 @@ public:
         }
     }
 
+	// Write the MAC grid to a POLY file
     void drawGrid() {
         // dims is number of cells along an axis
         std::ofstream polyFile("output/grid.poly");
