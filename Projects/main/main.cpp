@@ -93,6 +93,7 @@ int main(int argc, char **argv) {
     }
 	else if (loadSamples) {
         samples = loadSamplesFromFile("poisson_unit_cube_578samples.bgeo");
+
 	}
 	if (!loadSamples) {
         // set up sampling parameters
