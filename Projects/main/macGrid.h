@@ -262,11 +262,15 @@ public:
         }
 	}
 
+    void sphereCollision() {
+
+    }
+
     void writeFrame() {
         Partio::ParticlesDataMutable *parts = Partio::create();
         Partio::ParticleAttribute posH;
         Partio::ParticleAttribute velH;
-        std::string filename = "frames/frame_" + std::to_string(numFrames + 1) + ".bgeo";
+        std::string filename = "output/frame_" + std::to_string(numFrames + 1) + ".bgeo";
 
         posH = parts->addAttribute("position", Partio::VECTOR, 3);
         velH = parts->addAttribute("v", Partio::VECTOR, 3);
@@ -289,16 +293,10 @@ public:
     void stepSimulation() {
         particleToGrid();
         computeGridVelocities();
-#if DEBUG
-        assert(isMomentumConserved());
-#endif
         computeGridForces();
         applyGridForces();
         setBoundaryVelocities(3);
         gridToParticle();
-#if DEBUG
-        assert(isMomentumConserved());
-#endif
         advectParticles();
     }
 
@@ -342,7 +340,7 @@ public:
         // Hardening parameter; typically a value between 3 and 10
         T Jp = Fp.determinant();
         T mu = mu0 * std::exp(xi_hardness * (1 - Jp));
-        T lambda = lambda0 * std::exp(xi * (1 - Jp));
+        T lambda = lambda0 * std::exp(xi_hardness * (1 - Jp));
 
         T FRDet = (Fe - Re).determinant();
         T Je = Fe.determinant();
@@ -435,48 +433,9 @@ public:
         }
     }
 
-    bool isMomentumConserved() {
-        vec3 particleP = vec3::Zero();
-        vec3 nodeP = vec3::Zero();
-        for (const auto &p : particles) {
-            particleP += p.mass * p.vel;
-        }
-
-        for (int i = 0; i < nodeVels.length; i++) {
-            nodeP += nodeMasses.mData[i] * nodeVels.mData[i];
-            //nodeP += nodeMomentums.mData[i];
-        }
-
-        bool isConserved = cmpVec3(nodeP, "Node Momentums", particleP, "Particle Momentums");
-        return isConserved;
-    }
-
-    bool cmpVec3(vec3 &v1, const char *v1Name, vec3 &v2, const char *v2Name) {
-        bool isEqual = true;
-        for (int i = 0; i < 3; i++) {
-            isEqual = isEqual && std::abs(v1[i] - v2[i]) < EPSILON;
-            if (!isEqual) {
-                printf("%s: %f, %f, %f\n", v1Name, v1[0], v1[1], v1[2]);
-                printf("%s: %f, %f, %f\n", v2Name, v2[0], v2[1], v2[2]);
-                return isEqual;
-            }
-        }
-        return isEqual;
-    }
-
-    bool cmpT(T v1, const char *v1Name, T v2, const char *v2Name) {
-        if (std::abs(v1 - v2) > EPSILON) {
-            printf("%s: %f", v1Name, v1);
-            printf("%s: %f", v2Name, v2);
-            return false;
-        } else {
-            return true;
-        }
-    }
-
     void drawGrid() {
         // dims is number of cells along an axis
-        std::ofstream polyFile("grid.poly");
+        std::ofstream polyFile("output/grid.poly");
 
         polyFile << "POINTS\n";
         for (unsigned int k = 0; k < dims[2]; ++k) {

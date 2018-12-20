@@ -5,7 +5,11 @@
 
 class Simulation {
 public:
-	Simulation(int i, int j, int k, mat4 transform, std::vector<Particle<T>> particle, double seconds = 20.0, double fps = 24.0);
+	Simulation(int i, int j, int k,
+			   mat4 transform,
+			   std::vector<Particle<T>> particle,
+			   double seconds = 20.0, d
+			   ouble fps = 24.0);
 	void run();
 
 	MACGrid<T> grid;

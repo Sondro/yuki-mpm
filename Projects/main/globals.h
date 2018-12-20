@@ -14,9 +14,6 @@
 constexpr int dim = 3;
 using T = double;
 
-constexpr T DENSITY = 2.0;
-constexpr T VOLUME = 1.0;
-
 // The length, width, and height of each cell
 // Each cell is a cube
 constexpr T CELL_SIZE = 0.1;
