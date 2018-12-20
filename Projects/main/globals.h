@@ -42,6 +42,13 @@ for (int k = -offset; k <= offset; k++) {
 
 #define END_FOR_EACH_NEIGHBOR }}}
 
+#define FOR_EACH_NODE for (int i = 0; i < dims[0]; i++) { \
+for (int j = 0; j < dims[1]; j++) { \
+for (int k = 0; k < dims[2]; k++) {
+
+
+#define END_FOR_EACH_NODE }}}
+
 constexpr T dt = 0.0001;
 constexpr T k = 1000;
 constexpr T nu = .2;
