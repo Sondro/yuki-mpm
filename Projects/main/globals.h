@@ -38,6 +38,16 @@ constexpr int Z_CELL_COUNT = static_cast<int>(Z_SIZE / CELL_SIZE);
 #define STRESS 1
 #define GRAVITY 1
 
+inline void foreach_neighbor(int offset, const std::function<void(int, int, int)> f) {
+	for (int i = -offset; i <= offset; i++) {
+		for (int j = -offset; j <= offset; j++) {
+			for (int k = -offset; k <= offset; k++) {
+				f(i, j, k);
+			}
+		}
+	}
+}
+
 #define FOR_EACH_NEIGHBOR int offset = 2; \
 for (int i = -offset; i <= offset; i++) { \
 for (int j = -offset; j <= offset; j++) { \

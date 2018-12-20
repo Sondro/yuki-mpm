@@ -38,6 +38,19 @@ public:
             if (!nodeVels.inRange(xp)) { continue; }
 			vec3i gridIdx = nodeVels.cellOf(xp);
 
+            foreach_neighbor(2, [&](int i, int j, int k) {
+                vec3i nIdx = gridIdx + vec3i(i, j, k);
+                if (outOfBounds(nIdx)) { return; }
+                vec3 xi = nIdx.cast<T>() * CELL_SIZE;
+                T w = getWeight(xp, xi);
+
+                // Transfer the masses
+                T m = w * p.mass;
+                vec3 _p = w * p.mass * (p.vel + p.B * D_INV * (xi - xp));
+                nodeMomentums(nIdx) += _p;
+                nodeMasses(nIdx) += m;
+            });
+
             FOR_EACH_NEIGHBOR
                 vec3i nIdx = gridIdx + vec3i(i, j, k);
                 if (outOfBounds(nIdx)) { continue; }
