@@ -35,7 +35,11 @@ Stores particles (of class `particles`) as well as node forces, velocities, mass
 - Advect particles appropriately
 - Write data to BGEO file
 
-This class computes the plastic deformation gradient using the first Piola-Kirchoff stress specified in Stomakhin et. al. (2013) to simulate snow-like behavior.
+The elastic deformation gradient, *F<sub>E</sub>*, was computed using the fixed corotated model.
+
+The plastic deformation gradient, *F<sub>P</sub>*, was computed using the first Piola-Kirchoff stress tensor (*P*) that can be derived from the plastic energy density function, *Ψ*, given in Stomakhin et. al. (2013) to simulate snow-like behavior. The relationship is such that *P* = ∂*Ψ*/∂*F* where *F* is the total deformation gradient.
+
+*F<sub>P</sub>* is calculated using a modified singular-value decomposition. This modification clamps the singular values and uses Lamé parameters *µ* and *λ* to modify *P*, adding hardening effects characteristic of snow, allowing it to compact when put in compression and fracture when put in tension. The Lamé parameters are computed based on det(*F<sub>P</sub>*) and a hardening parameter, *ξ*.
 
 ### `simulation.cpp`
 Steps through the main algorithm and predicts time to finish writing the desired number of frames.
