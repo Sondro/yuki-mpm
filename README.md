@@ -47,6 +47,30 @@ Reads in OBJ files, computes total mesh volume, sets initial transformation, eve
 - Behaving like a rigid body
   - Caused by updating grid velocity with `m * g * dt` (a momentum quantity) instead of `g * dt` (a velocity quantity)
   - Prevented the body from deforming upon collision
+  
+## Contributions
+- Alexander Chan
+  - MAC Grid
+  - Grid Data
+  - Elasticity
+  - KDTree mesh sampling
+  - Simulation class
+  - Debugging
+  
+- Jacob Snipes
+  - Poisson unit cube sampling
+  - Elasticity computation
+  - Plasticity computation
+  - Debugging
+  
+- Emily Vo
+  - Particle-Grid transfers
+  - Interpolations
+  - Force calculations
+  - APIC
+  - MAC Grid
+  - Poisson
+  - Debugging
 
 ## Future Work
 - GPU parallelization using CUDA
