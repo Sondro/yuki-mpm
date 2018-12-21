@@ -35,7 +35,7 @@ Stores particles (of class `particles`) as well as node forces, velocities, mass
 - Advect particles appropriately
 - Write data to BGEO file
 
-The elastic deformation gradient, *F<sub>E</sub>*, was computed using the fixed corotated model.
+The elastic deformation gradient, *F<sub>E</sub>*, was computed using a fixed corotated model.
 
 The plastic deformation gradient, *F<sub>P</sub>*, was computed using the first Piola-Kirchoff stress tensor (*P*) that can be derived from the plastic energy density function, *Ψ*, given in Stomakhin et. al. (2013) to simulate snow-like behavior. The relationship is such that *P* = ∂*Ψ*/∂*F* where *F* is the total deformation gradient.
 
