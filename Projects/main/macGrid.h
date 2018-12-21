@@ -25,6 +25,36 @@ inline vec3 sphereNormal(vec3 p, vec3 center, T length) {
     return normal;
 }
 
+// Signed distance function defining a sphere centered at "center"
+inline T cubeSDF(vec3 p, vec3 center, vec3 bounds) {
+    vec3 pos = p - center;
+    vec3 abs_pos;
+    abs_pos << std::abs(pos[0]), std::abs(pos[1]), std::abs(pos[2]);
+    vec3 d = abs_pos - bounds;
+    vec3 d_max = d;
+    for (int i = 0; i < 3; i++) {
+        d_max[i] = std::max(d_max[i], 0.0);
+    }
+
+    return d_max.norm() + std::min(std::max(d[0], std::max(d[1], d[2])), 0.0);
+}
+
+// Compute surface normal of a sphere at a point
+inline vec3 cubeNormal(vec3 p, vec3 center, vec3 bounds) {
+    vec3 normal;
+    T x = p[0];
+    T y = p[1];
+    T z = p[2];
+    normal << cubeSDF(vec3(x + EPSILON, y, z), center, bounds) -
+              cubeSDF(vec3(x - EPSILON, y, z), center, bounds),
+            cubeSDF(vec3(x, y + EPSILON, z), center, bounds) -
+            cubeSDF(vec3(x, y - EPSILON, z), center, bounds),
+            cubeSDF(vec3(x, y, z  + EPSILON), center, bounds) -
+            cubeSDF(vec3(x, y, z - EPSILON), center, bounds);
+    normal.normalize();
+    return normal;
+}
+
 template <typename T>
 struct SVDResult {
     mat3 U, V, Sigma;
@@ -187,17 +217,17 @@ public:
 
     // Pad the inside boundary of the grid, imposing a no-slip condition
 	void setBoundaryVelocities(int thickness) {
-	    for (int i = 0; i < thickness; ++i) {
-	        for (int j = 0; j < dims[1]; ++j) {
-	            for (int k = 0; k < dims[2]; ++k) {
-	                vec3 normal;
-	                normal << 1, 0, 0;
-	                nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
-	            }
-	        }
-	    }
+        for (int i = 0; i < thickness; ++i) {
+            for (int j = 0; j < dims[1]; ++j) {
+                for (int k = 0; k < dims[2]; ++k) {
+                    vec3 normal;
+                    normal << 1, 0, 0;
+                    nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
+                }
+            }
+        }
 
-	    for (int i = dims[0] - thickness; i < dims[0]; ++i) {
+        for (int i = dims[0] - thickness; i < dims[0]; ++i) {
             for (int j = 0; j < dims[1]; ++j) {
                 for (int k = 0; k < dims[2]; ++k) {
                     vec3 normal;
@@ -205,7 +235,7 @@ public:
                     nodeVels(i, j, k) -= nodeVels(i, j, k).dot(normal) * normal;
                 }
             }
-	    }
+        }
 
         for (int i = 0; i < dims[0]; ++i) {
             for (int j = 0; j < thickness; ++j) {
@@ -247,13 +277,22 @@ public:
             }
         }
 
-#define COLLIDE
-#ifdef COLLIDE
+// #define SPHERE
+#ifdef SPHERE
         vec3 center;
         center << X_SIZE / 2, 2, Z_SIZE / 2;
         sphereCollision(center, .25, 0.7);
 #endif
-	}
+
+#define CUBE
+#ifdef CUBE
+        vec3 center;
+        center << X_SIZE / 2, Y_SIZE / 2 - 2, Z_SIZE / 2;
+        vec3 bounds;
+        bounds << 5, 5, 0.2;
+        cubeCollision(center, bounds, 0.7);
+#endif
+    }
 
 	// Handle collision with a rigid sphere
     void sphereCollision(vec3 center, T radius, T friction) {
@@ -274,6 +313,27 @@ public:
 	           nodeVels(i, j, k) = newV;
 	       }
 	    });
+    }
+
+    // Handle collision with a rigid sphere
+    void cubeCollision(vec3 center, vec3 bounds, T friction) {
+        foreach_node(dims, [&](int i, int j, int k) {
+            // Position of the node
+            vec3 pos;
+            pos << i * CELL_SIZE, j * CELL_SIZE, k * CELL_SIZE;
+
+            // Correct node's vel if the node is inside of the sphere
+            if (cubeSDF(pos, center, bounds) <= 0.0) {
+                vec3 normal = cubeNormal(pos, center, bounds);
+                T vn = normal.dot(nodeVels(i, j, k));
+                vec3 vt = nodeVels(i, j, k) - vn * normal;
+                vec3 vt_n = vt;
+                vt_n.normalize();
+                vec3 newV = vt + friction * vn * vt_n;
+                pos.normalize();
+                nodeVels(i, j, k) = newV;
+            }
+        });
     }
 
     // Write the current frame to a BGEO file using PartIO

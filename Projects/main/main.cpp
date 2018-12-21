@@ -115,7 +115,7 @@ int main(int argc, char **argv) {
             vec3 center;
             center << 0.5, 0.5, 0.5;
             if (sphereSDF(p, center, 0.5) <= 0.0) {
-                samples.push_back(p);
+                //samples.push_back(p);
                 vec3 higherBall = p;
 
                 // add second sample for higher ball
