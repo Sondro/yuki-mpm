@@ -22,7 +22,6 @@ This method is advantageous because it does not require remeshing steps, so it i
 
 ### `globals.h`
 This file is included in all other files; it stores the simulation's parameters to make for easy tuning. Further, we include custom definitions and the external Eigen and PartIO libraries.
-
 ### `particle.h`
 The `Particle` class contains a position vector, velocity vector, mass quantity, volume quantity, *B* matrix as specified by the Affine Particle-In-Cell (APIC) method, elastic deformation gradient matrix (*F<sub>E</sub>*), and plastic deformation gradient matrix (*F<sub>P</sub>*).
 
@@ -45,7 +44,6 @@ Stores particles (of class `particles`) as well as node forces, velocities, mass
 
 - Transfer particle quantities to the MAC grid 
 - Compute velocities of the grid nodes
-- Eliminate unnecessary grid nodes (i.e. - those with no mass) to reduce computation time
 - Compute grid forces (including collision handling)
 - Update grid velocities using computed forces
 - Update each particle's deformation gradient
@@ -54,7 +52,7 @@ Stores particles (of class `particles`) as well as node forces, velocities, mass
 - Advect particles appropriately
 - Write data to BGEO file
 
-The elastic deformation gradient, *F<sub>E</sub>*, was computed using a fixed corotated model.
+The elastic deformation gradient, *F<sub>E</sub>* is initialized to the identity and is evolved ecery timestep the same way the overall deformation gradient is. However, afterwards, the deformation gradient undergoes singular value decomposition. The singular values are clamped to the parameters of snow. Then the values are multiplied back to become the new elastic deformation gradient.
 
 The plastic deformation gradient, *F<sub>P</sub>*, was computed using the first Piola-Kirchoff stress tensor (*P*) that can be derived from the plastic energy density function, *Ψ*, given in Stomakhin et. al. (2013) to simulate snow-like behavior. The relationship is such that *P* = ∂*Ψ*/∂*F* where *F* is the total deformation gradient.
 
