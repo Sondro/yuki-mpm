@@ -72,9 +72,6 @@ Reads in OBJ files, computes total mesh volume, sets initial transformation, eve
   - Prevented the body from deforming upon collision
 - Tileable poisson sampled cube
   - First attempted to use lloyd's relaxation algorithm where samples are iteratively moved towards the centroid of a voronoi cell containing that sample. This was following the algorithm presented in the paper [Template Poisson Disk Tiles](http://graphics.cs.kuleuven.be/publications/LD05TPDT/LD05TPDT_paper.pdf). 
-
-    ![](img/template.png)
-
   - Voro++ was used to compute the edges and vertices of each voronoi cell. Then, this surface was triangulated in our code. After triangulation, we used the formula for computing the centroid of a triangulated mesh. However, the relaxation drew the samples in away from the boundaries of the cube to make sure the samples were far away enough. When tiled, the artifacts are noticeable, so we decided to use the uniform grid to wrap the samples around the cube and test if the samples on the other side of the cube are far enough. This created more seamless tiling results.
   
 ## Contributions
