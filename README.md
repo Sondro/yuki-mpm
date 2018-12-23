@@ -11,14 +11,12 @@ This method is advantageous because it does not require remeshing steps, so it i
 * __Tested and simulated on__: Windows 10, i7-5820K @ 3.7GHz 16GB, GTX 1080 8GB (Personal Desktop Computer)
 
 ## Demos
-### Snow bunny with sphere rigid body 
+### Snow bunny with sphere rigid body
 ![](img/bunny.gif)
 
-### Purely elastic cube
-![](img/jello.gif)
-
-### Snow ball with wall boundaries
-![](img/snowball.gif)
+| Purely elastic cube |Snowball with wall boundaries|
+|:-------------:|:-------------:|
+|<img src="img/jello.gif" height="751"/>|<img src="img/snowball.gif" height="751"/>|
 
 ## Implementation Details
 
@@ -121,3 +119,6 @@ Reads in OBJ files, computes total mesh volume, sets initial transformation, eve
 - ["Template Poisson Disk Tiles", Lagae et. al., 2005](http://graphics.cs.kuleuven.be/publications/LD05TPDT/LD05TPDT_paper.pdf)
 
 ## Libraries
+- [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+- [Voro++](http://math.lbl.gov/voro++/)
+- [Partio](https://www.disneyanimation.com/technology/partio.html)
