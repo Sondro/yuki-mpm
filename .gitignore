@@ -10,3 +10,4 @@ cmake-build-debug/
 Projects/main/main
 Projects/main/main_debug
 Makefile
+*.poly
