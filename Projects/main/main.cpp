@@ -70,13 +70,14 @@ int main(int argc, char **argv) {
     T DENSITY = 2.0;
     T VOLUME = 1.0;
 
-    bool loadSampledMesh = false;
+    bool loadSampledMesh = true;
+    bool createdSampledMesh = true;
     bool loadSamples = true;
 	Sampler<T> *s;
 	PointList samples;
     if (loadSampledMesh) {
         // load sampled mesh
-        samples = loadSamplesFromFile("models/bunny.bgeo");
+        samples = loadSamplesFromFile("models/bunny2.bgeo");
 
         // compute the bounding box
         Bounds bounds;
@@ -90,10 +91,22 @@ int main(int argc, char **argv) {
         }
 
         VOLUME = computeMeshVolume("models/bunny.obj");
-    }
-	else if (loadSamples) {
-        samples = loadSamplesFromFile("poisson_unit_cube_1157samples.bgeo");
+    } else if (createdSampledMesh) {
+        T n = 3;
+        T r2 = 1.0 / 6.0;
+        T k = 30;
 
+        // set up psuedo random sampling
+        int seed = int(n * r2 * k);
+        std::srand(seed);
+
+        // Generating samples
+        s = new Sampler<T>(n, r2, k);
+        samples = s->unitCube.getAllSamples();
+        samples = sampledMesh(samples, "models/bunny.obj");
+        s->saveSamples(samples, "output/samples.bgeo");
+    } else if (loadSamples) {
+        samples = loadSamplesFromFile("poisson_unit_cube_1157samples.bgeo");
 	}
 	if (!loadSamples) {
         // set up sampling parameters
@@ -108,7 +121,6 @@ int main(int argc, char **argv) {
 		// Generating samples
 		s = new Sampler<T>(n, r2 / 2.0, k);
 		samples = s->unitCube.getAllSamples();
-
 	}
 
     vec3i dim(X_CELL_COUNT, Y_CELL_COUNT, Z_CELL_COUNT);
@@ -117,8 +129,8 @@ int main(int argc, char **argv) {
     mat4 transform = mat4::Identity();
 
     vec3 translate, scale;
-    translate << 1.5, 5.5, 1.5;
-    scale << 0.5, 0.5, 0.5;
+    translate << 1, 5.5, 1;
+    scale << 0.2, 0.2, 0.2;
 
     for (int i = 0; i < 3; i++) {
         transform(i, 3) = translate[i];

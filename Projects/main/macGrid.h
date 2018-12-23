@@ -89,8 +89,8 @@ public:
                 vec3 xi = nIdx.cast<T>() * CELL_SIZE;
                 vec3 wd = getWeightGradient(xp, xi);
                 // Compute forces, incorporating plastic deformation
-                //nodeForces(nIdx) += -p.vol * snowModel(p.Fe, p.Fp) * p.F.transpose() * wd;
-                nodeForces(nIdx) += -p.vol * FixedCorotated(p.F) * p.F.transpose() * wd;
+                nodeForces(nIdx) += -p.vol * snowModel(p.Fe, p.Fp) * p.F.transpose() * wd;
+                //nodeForces(nIdx) += -p.vol * FixedCorotated(p.F) * p.F.transpose() * wd;
             });
         }
     }

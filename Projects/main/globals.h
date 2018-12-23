@@ -32,9 +32,9 @@ constexpr T INV_CELL_SIZE = 1.0 / CELL_SIZE;
 // The extent of grid (grid goes from {0, 0, 0} to {X, Y, Z}
 // Along with the cell size, determines how many cells should
 // be in the grid
-constexpr T X_SIZE = 4;
-constexpr T Y_SIZE = 10;
-constexpr T Z_SIZE = 4;
+constexpr T X_SIZE = 3;
+constexpr T Y_SIZE = 7;
+constexpr T Z_SIZE = 3;
 
 constexpr int X_CELL_COUNT = static_cast<int>(X_SIZE / CELL_SIZE);
 constexpr int Y_CELL_COUNT = static_cast<int>(Y_SIZE / CELL_SIZE);
