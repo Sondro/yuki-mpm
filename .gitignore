@@ -1,7 +1,6 @@
 .idea/
 Build/
 cmake-build-debug/
-*.bgeo
 *.png
 *.jpg
 *.mp4
@@ -9,5 +8,6 @@ cmake-build-debug/
 *build*/
 Projects/main/main
 Projects/main/main_debug
+Projects/main/output
 Makefile
 *.poly
