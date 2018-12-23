@@ -11,9 +11,13 @@ This method is advantageous because it does not require remeshing steps, so it i
 * __Tested and simulated on__: Windows 10, i7-5820K @ 3.7GHz 16GB, GTX 1080 8GB (Personal Desktop Computer)
 
 ## Demos
-
+### Snow bunny with sphere rigid body 
 ![](img/bunny.gif)
+
+### Purely elastic cube
 ![](img/jello.gif)
+
+### Snow ball with wall boundaries
 ![](img/snowball.gif)
 
 ## Implementation Details
