@@ -11,7 +11,10 @@ This method is advantageous because it does not require remeshing steps, so it i
 * __Tested and simulated on__: Windows 10, i7-5820K @ 3.7GHz 16GB, GTX 1080 8GB (Personal Desktop Computer)
 
 ## Demos
-*Insert demo videos/GIFs here*
+
+![](img/bunny.gif)
+![](img/jello.gif)
+![](img/snowball.gif)
 
 ## Implementation Details
 
@@ -79,6 +82,7 @@ Reads in OBJ files, computes total mesh volume, sets initial transformation, eve
   - Neohookean and Fixed Corotated Elasticity
   - KDTree mesh sampling
   - Simulation class
+  - Collision detection for wall boundaries
   
 - Jacob Snipes
   - Fast Poisson Disk algorithm 
@@ -86,6 +90,7 @@ Reads in OBJ files, computes total mesh volume, sets initial transformation, eve
   - Neohookean and Fixed Corotated elasticity
   - Plastic and elastic deformation gradient evolution
   - Plasticity computation 
+  - Collision velocity correction for rigid bodies
   
 - Emily Vo
   - Particle-Grid transfers 
@@ -96,6 +101,7 @@ Reads in OBJ files, computes total mesh volume, sets initial transformation, eve
   - Poisson sample distribution throughout bounding volume
   - Bounding volume computation
   - Lloyd's relaxation algorithm
+  - Signed distance functions for rigid bodies and normal calculations
 
 ## Future Work
 - GPU parallelization using CUDA
